@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spin Wheel - MineProfit</title>
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Ticker Banner -->
+  <div class="ticker-bar">
+    <div class="ticker-track" id="tickerTrack"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-brand">⛏️ MineProfit</div>
+    <div class="nav-links">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/shop.html">Shop</a>
+      <a href="/spin.html" class="active">🎰 Spin</a>
+      <a href="/games.html">🎮 Games</a>
+      <a href="/profile.html">Profile</a>
+      <a href="/payment.html">Deposit</a>
+      <a href="/withdrawal.html">💸 Withdraw</a>
+      <a href="/contact.html">📞 Help</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </div>
+  </nav>
+
+  <!-- Promotional Banner -->
+  <div class="promo-banner">
+    <div class="promo-content">
+      <span class="promo-icon">🎰</span>
+      <span class="promo-text">🔥 SPIN & WIN! Users are winning <strong>Diamond Drills</strong>, <strong>Quantum Miners</strong> & <strong>₹1,000 Bonuses</strong> — Try your luck NOW!</span>
+      <span class="promo-icon">🎰</span>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="welcome-banner" style="text-align:center;">
+      <h1>🎰 Lucky Spin Wheel</h1>
+      <p>Spin the wheel to win FREE mining machines and bonus rewards!</p>
+    </div>
+
+    <!-- Spin Wheel -->
+    <div class="spin-section">
+      <div class="wheel-container">
+        <div class="wheel-pointer">▼</div>
+        <canvas id="wheelCanvas" width="340" height="340"></canvas>
+      </div>
+
+      <div class="spin-controls-wrapper">
+        <!-- Stats Row -->
+        <div class="spin-stats">
+          <div class="stat-pill">
+            <span class="stat-label">💰 Balance</span>
+            <span class="stat-value" id="spinBalance">...</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-label">🎟️ Free Spins</span>
+            <span class="stat-value" id="freeSpins">0</span>
+          </div>
+        </div>
+
+        <!-- Main Actions -->
+        <div class="main-actions">
+          <button class="action-btn btn-free" id="freeSpinBtn" onclick="spinWheel('free')">
+            USE FREE SPIN
+          </button>
+          <button class="action-btn btn-paid" id="paidSpinBtn" onclick="spinWheel('paid')">
+            SPIN FOR ₹<span id="spinCostDisplay">200</span>
+          </button>
+        </div>
+
+        <!-- Bundle Grid -->
+        <div class="bundle-grid" id="bundleGrid">
+          <!-- Bundles injected by JS -->
+          <div style="grid-column:1/-1; text-align:center;">Loading bundles...</div>
+        </div>
+      </div>
+
+      <!-- Bundle Result Modal -->
+      <div id="bundleModal" class="modal-overlay" style="display:none;">
+        <div class="modal">
+          <h2 class="section-title">🎉 Bundle Results!</h2>
+          <div id="bundleResults" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(100px, 1fr)); gap:10px; margin:20px 0; max-height:300px; overflow-y:auto;"></div>
+          <button class="btn btn-primary" onclick="closeBundleModal()">Collect Rewards</button>
+        </div>
+      </div>
+
+      <!-- Prize Result -->
+      <div class="prize-result" id="prizeResult" style="display:none;">
+        <div class="prize-label">🎉 You Won!</div>
+        <div class="prize-value" id="prizeValue"></div>
+      </div>
+    </div>
+
+    <!-- Recent Winners Promo -->
+    <div class="section">
+      <h2 class="section-title">🏆 Recent Winners — Users Winning BIG Machines!</h2>
+      <div class="winners-grid" id="recentWinners">
+        <div class="loading">Loading winners...</div>
+      </div>
+    </div>
+
+    <!-- Spin History -->
+    <div class="section">
+      <h2 class="section-title">📜 Your Spin History</h2>
+      <div class="transactions-list" id="spinHistory">
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/ticker.js"></script>
+  <script src="/js/spin.js"></script>
+  <script src="/js/nav.js"></script>
+</body>
+</html>

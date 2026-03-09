@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deposit - MineProfit</title>
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Ticker Banner -->
+  <div class="ticker-bar">
+    <div class="ticker-track" id="tickerTrack"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-brand">⛏️ MineProfit</div>
+    <div class="nav-links">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/shop.html">Shop</a>
+      <a href="/spin.html">🎰 Spin</a>
+      <a href="/games.html">🎮 Games</a>
+      <a href="/profile.html">Profile</a>
+      <a href="/payment.html" class="active">Deposit</a>
+      <a href="/withdrawal.html">💸 Withdraw</a>
+      <a href="/contact.html">📞 Help</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="welcome-banner" style="text-align:center;">
+      <h1>💳 Add Funds</h1>
+      <p>Deposit money to buy mining machines and start earning</p>
+    </div>
+
+    <div class="news-bar" id="depositNewsBar"></div>
+
+    <div class="payment-balance-bar">
+      Current Balance: <span id="paymentBalance">₹0.00</span>
+    </div>
+
+    <div class="payment-mode-selector" style="margin-bottom:24px;">
+      <h3 style="margin-bottom:12px; font-size:1.1rem; color:var(--text-secondary);">Choose Payment Method</h3>
+      <div class="mode-grid">
+        <div class="mode-card active" onclick="selectMode('upi')" id="mode-upi" style="position:relative;">
+          <span class="badge-bonus">+BONUS</span>
+          <div class="mode-icon">📱</div>
+          <div class="mode-name">UPI</div>
+        </div>
+        <div class="mode-card" onclick="selectMode('bank')" id="mode-bank" style="position:relative;">
+          <span class="badge-bonus">+BONUS</span>
+          <div class="mode-icon">🏦</div>
+          <div class="mode-name">Bank Transfer</div>
+        </div>
+        <div class="mode-card" onclick="selectMode('crypto')" id="mode-crypto" style="position:relative;">
+          <span class="badge-bonus">+BONUS</span>
+          <div class="mode-icon">🪙</div>
+          <div class="mode-name">Crypto</div>
+        </div>
+      </div>
+      <input type="hidden" id="payMode" value="upi">
+    </div>
+
+    <div class="admin-item-card" id="depositInstructions" style="margin-bottom:16px;"></div>
+
+    <div class="withdraw-note" style="margin-bottom:16px; background:rgba(0, 210, 106, 0.05); border:1px solid rgba(0, 210, 106, 0.2); padding:12px; border-radius:8px;">
+      <p style="color:var(--text-primary); font-size:0.95rem; display:flex; align-items:center; gap:8px;">
+        <span style="font-size:1.2rem;">⏱️</span> All deposits are approved within <strong>30 minutes</strong>.
+      </p>
+    </div>
+
+    <!-- Bonus Banners -->
+    <div id="bonusBanner" class="bonus-banner" style="display:none; margin-bottom:16px; background:linear-gradient(45deg, #FFD70033, #FFA50033); border:1px solid var(--gold); border-radius:8px; padding:12px; text-align:center;">
+      <div style="font-weight:bold; color:var(--gold); font-size:1.1rem; margin-bottom:4px;">🎉 Special Deposit Offer!</div>
+      <div id="bonusText" style="color:var(--text-primary); font-size:0.9rem;"></div>
+    </div>
+
+    <!-- Payment Methods -->
+    <div class="payment-methods">
+      <!-- UPI Section -->
+      <div class="payment-card" id="upiCard">
+        <div class="payment-card-header">
+          <h3>📱 Pay via UPI</h3>
+          <p>Send money using any UPI app (GPay, PhonePe, Paytm)</p>
+        </div>
+        <div class="form-group" style="margin:0 0 8px;">
+          <label>Select UPI Gateway</label>
+          <select id="upiGateway" class="payment-input"></select>
+        </div>
+        <div class="payment-qr-section">
+          <div class="qr-placeholder">
+            <div class="qr-box">
+              <div style="font-size:4rem;margin-bottom:8px;">📱</div>
+              <div style="font-size:0.9rem;color:var(--text-secondary);">Scan QR with UPI App</div>
+            </div>
+          </div>
+          <div class="payment-details">
+            <div class="payment-detail-item">
+              <span class="detail-label">UPI ID</span>
+              <span class="detail-value" id="upiId">mineprofit@ybl</span>
+              <button class="btn btn-copy-sm" onclick="copyText('upiId')">📋</button>
+            </div>
+            <div class="payment-detail-item">
+              <span class="detail-label">Name</span>
+              <span class="detail-value" id="upiName">MineProfit Official</span>
+            </div>
+          </div>
+        </div>
+        <div class="payment-form-inline">
+          <input type="number" id="upiAmount" min="100" placeholder="Amount (min ₹100)" class="payment-input">
+          <input type="text" id="upiRef" placeholder="UPI Transaction ID / UTR" class="payment-input">
+          <input type="hidden" id="upiGatewayId">
+          <button class="btn btn-primary" onclick="submitPayment('upi')">✅ Confirm Payment</button>
+        </div>
+      </div>
+
+      <!-- Bank Section -->
+      <div class="payment-card" id="bankCard" style="display:none;">
+        <div class="payment-card-header">
+          <h3>🏦 Pay via Bank Transfer</h3>
+          <p>NEFT / IMPS / RTGS</p>
+        </div>
+        <div class="form-group" style="margin:0 0 8px;">
+          <label>Select Bank Gateway</label>
+          <select id="bankGateway" class="payment-input"></select>
+        </div>
+        <div class="payment-details">
+          <div class="payment-detail-item"><span class="detail-label">Account Name</span><span class="detail-value" id="bankAccName">N/A</span></div>
+          <div class="payment-detail-item"><span class="detail-label">Account Number</span><span class="detail-value" id="bankAccNo">N/A</span></div>
+          <div class="payment-detail-item"><span class="detail-label">IFSC</span><span class="detail-value" id="bankIFSC">N/A</span></div>
+          <div class="payment-detail-item"><span class="detail-label">Bank</span><span class="detail-value" id="bankName">N/A</span></div>
+        </div>
+        <div class="payment-form-inline">
+          <input type="number" id="bankAmount" min="100" placeholder="Amount (min ₹100)" class="payment-input">
+          <input type="text" id="bankRef" placeholder="UTR / Reference" class="payment-input">
+          <input type="hidden" id="bankGatewayId">
+          <button class="btn btn-primary" onclick="submitPayment('bank')">✅ Confirm Payment</button>
+        </div>
+      </div>
+
+      <!-- Crypto Section -->
+      <div class="payment-card" id="cryptoCard" style="display:none;">
+        <div class="payment-card-header">
+          <h3>🪙 Pay via Crypto</h3>
+          <p>Send crypto to the selected token address</p>
+        </div>
+
+        <div style="background:rgba(244,196,48,0.1); border:1px solid var(--gold-dim); border-radius:8px; padding:10px; margin-bottom:16px; text-align:center;">
+          <div id="usdtRateDisplay" style="color:var(--gold); font-weight:bold; font-size:1.1rem; margin-bottom:4px;">1 USDT = ₹101 INR</div>
+          <div style="font-size:0.85rem; color:var(--text-secondary);">Deposit Crypto → Withdraw in Bank</div>
+        </div>
+
+        <div class="crypto-tabs" id="cryptoTabs"></div>
+
+        <div class="crypto-address-section">
+          <div class="qr-placeholder">
+            <div class="qr-box">
+              <div style="font-size:4rem;margin-bottom:8px;">🪙</div>
+              <div style="font-size:0.9rem;color:var(--text-secondary);">Scan QR to Send Crypto</div>
+            </div>
+          </div>
+          <div class="payment-details">
+            <div class="payment-detail-item">
+              <span class="detail-label">Address</span>
+              <span class="detail-value crypto-addr" id="cryptoAddr">1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa</span>
+              <button class="btn btn-copy-sm" onclick="copyText('cryptoAddr')">📋</button>
+            </div>
+          </div>
+        </div>
+        <div class="payment-form-inline">
+          <input type="number" id="cryptoUSDT" min="1" step="0.01" placeholder="Amount in USDT" class="payment-input" oninput="calculateCryptoINR()">
+          <input type="text" id="cryptoAmount" readonly class="payment-input" placeholder="₹0 (Auto-calculated)" style="background:rgba(255,255,255,0.05); cursor:not-allowed;">
+          <input type="text" id="cryptoRef" placeholder="Transaction Hash / TXID" class="payment-input">
+          <input type="hidden" id="cryptoToken">
+          <div id="cryptoPreview" style="grid-column:1/-1; text-align:right; font-size:0.9rem; color:var(--gold); margin-top:-8px; margin-bottom:8px;"></div>
+          <button class="btn btn-primary" onclick="submitPayment('crypto')">✅ Confirm Payment</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment History -->
+    <div class="section">
+      <h2 class="section-title">📜 Recent Deposits</h2>
+      <div class="transactions-list" id="paymentHistory">
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/ticker.js"></script>
+  <script src="/js/payment.js?v=2"></script>
+  <script src="/js/nav.js"></script>
+</body>
+</html>

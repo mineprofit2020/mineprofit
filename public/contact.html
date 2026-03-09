@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact Us - MineProfit</title>
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Ticker Banner -->
+  <div class="ticker-bar">
+    <div class="ticker-track" id="tickerTrack"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-brand">⛏️ MineProfit</div>
+    <div class="nav-links">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/shop.html">Shop</a>
+      <a href="/spin.html">🎰 Spin</a>
+      <a href="/games.html">🎮 Games</a>
+      <a href="/profile.html">Profile</a>
+      <a href="/payment.html">Deposit</a>
+      <a href="/withdrawal.html">💸 Withdraw</a>
+      <a href="/contact.html" class="active">📞 Help</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="welcome-banner" style="text-align:center;">
+      <h1>📞 Contact Us</h1>
+      <p>Have questions? We're here to help!</p>
+    </div>
+
+    <div class="contact-grid">
+      <!-- Contact Info -->
+      <div class="contact-info-card">
+        <h3>Get In Touch</h3>
+        <div class="contact-item">
+          <span class="contact-icon">📧</span>
+          <div>
+            <strong>Email</strong>
+            <p>support@mineprofit.com</p>
+          </div>
+        </div>
+        <div class="contact-item">
+          <span class="contact-icon">💬</span>
+          <div>
+            <strong>Telegram</strong>
+            <p>@MineProfit_Support</p>
+          </div>
+        </div>
+        <div class="contact-item">
+          <span class="contact-icon">📱</span>
+          <div>
+            <strong>WhatsApp</strong>
+            <p>+1 202 555 0173</p>
+          </div>
+        </div>
+        <div class="contact-item">
+          <span class="contact-icon">⏰</span>
+          <div>
+            <strong>Support Hours</strong>
+            <p>24/7 — We never stop mining!</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact Form -->
+      <div class="form-card">
+        <h3>Send a Message</h3>
+        <form id="contactForm">
+          <div class="form-group">
+            <label for="contactName">Your Name</label>
+            <input type="text" id="contactName" placeholder="Enter your name" required>
+          </div>
+          <div class="form-group">
+            <label for="contactEmail">Email</label>
+            <input type="email" id="contactEmail" placeholder="Enter your email" required>
+          </div>
+          <div class="form-group">
+            <label for="contactSubject">Subject</label>
+            <input type="text" id="contactSubject" placeholder="What's this about?">
+          </div>
+          <div class="form-group">
+            <label for="contactMessage">Message</label>
+            <textarea id="contactMessage" rows="5" placeholder="Type your message here..." required></textarea>
+          </div>
+          <div id="contactMsg" class="success-msg" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary btn-full">📨 Send Message</button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <button class="livechat-fab" id="liveChatFab" type="button">24×7 Live Chat Support</button>
+
+  <div class="chat-widget" id="liveChatWidget" style="display:none;">
+    <div class="chat-header">
+      <div>
+        <div class="chat-title">MineProfit Support</div>
+        <div class="chat-subtitle">We reply in minutes • 24×7</div>
+      </div>
+      <button class="chat-close" id="liveChatClose" type="button">✕</button>
+    </div>
+    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-inputbar">
+      <input type="file" id="chatFile" accept="image/*" style="display:none;">
+      <button class="chat-iconbtn" id="chatAttach" type="button" title="Attach">📎</button>
+      <input class="chat-input" id="chatInput" type="text" placeholder="Type a message...">
+      <button class="chat-send" id="chatSend" type="button">Send</button>
+    </div>
+  </div>
+
+  <script src="/js/ticker.js"></script>
+  <script src="/js/support-user.js"></script>
+  <script>
+    // Logout
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/login.html';
+      });
+    }
+
+    // Pre-fill name/email if logged in
+    fetch('/api/auth/me').then(r => r.json()).then(data => {
+      if (data.user) {
+        document.getElementById('contactEmail').value = data.user.email || '';
+      }
+    }).catch(() => {});
+
+    document.getElementById('contactForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('contactMsg');
+      msg.style.display = 'none';
+
+      const body = {
+        name: document.getElementById('contactName').value.trim(),
+        email: document.getElementById('contactEmail').value.trim(),
+        subject: document.getElementById('contactSubject').value.trim(),
+        message: document.getElementById('contactMessage').value.trim()
+      };
+
+      try {
+        const res = await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          msg.className = 'success-msg';
+          msg.textContent = data.message;
+          msg.style.display = 'block';
+          document.getElementById('contactForm').reset();
+        } else {
+          msg.className = 'error-msg';
+          msg.textContent = data.error;
+          msg.style.display = 'block';
+        }
+      } catch {
+        msg.className = 'error-msg';
+        msg.textContent = 'Failed to send. Please try again.';
+        msg.style.display = 'block';
+      }
+    }
+  </script>
+  <script src="/js/nav.js"></script>
+</body>
+</html>

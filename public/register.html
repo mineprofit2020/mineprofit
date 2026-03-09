@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - MineProfit</title>
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="auth-page">
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="logo">⛏️ MineProfit</div>
+        <p class="subtitle">Create your account & get a FREE miner!</p>
+      </div>
+
+      <form id="registerForm">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" placeholder="Choose a username" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="Enter your email" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="Min 6 characters" required minlength="6">
+        </div>
+
+        <div class="form-group">
+          <label for="referralCode">Invite Code <span style="color:var(--text-muted);font-weight:600;font-size:0.8rem;">(optional)</span></label>
+          <input type="text" id="referralCode" name="referralCode" placeholder="Referral code (optional)">
+        </div>
+
+        <div id="errorMsg" class="error-msg" style="display:none;"></div>
+
+        <button type="submit" class="btn btn-primary btn-full">Create Account</button>
+      </form>
+
+      <div class="auth-footer">
+        <p>Already have an account? <a href="/login.html">Login here</a></p>
+      </div>
+
+      <div class="free-miner-badge">
+        🎁 FREE Mini Miner (₹4/hr) on signup!
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/auth.js"></script>
+</body>
+</html>

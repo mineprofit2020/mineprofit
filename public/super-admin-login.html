@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin Login - Multi-Business Suite</title>
+    <style>
+        :root {
+            --bg: #020617;
+            --card: #1e293b;
+            --accent: #10b981; /* Emerald MineProfit Color */
+            --text: #f8fafc;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui; }
+        body { background: var(--bg); color: var(--text); height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .login-card {
+            background: var(--card);
+            padding: 40px;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+        .logo { font-size: 2.5rem; margin-bottom: 15px; display: block; }
+        h1 { font-size: 1.5rem; margin-bottom: 8px; color: var(--accent); letter-spacing: 1px; }
+        p { color: #94a3b8; margin-bottom: 30px; font-size: 0.9rem; }
+        .input-group { text-align: left; margin-bottom: 20px; }
+        label { display: block; font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px; }
+        input {
+            width: 100%;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 14px;
+            border-radius: 12px;
+            outline: none;
+            font-size: 1rem;
+        }
+        input:focus { border-color: var(--accent); }
+        .btn {
+            width: 100%;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: 900;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.2s;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+        }
+        .btn:hover { transform: scale(1.02); }
+        #error { color: #ef4444; font-size: 0.85rem; margin-top: 15px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <span class="logo">⛏️</span>
+        <h1>MINEPROFIT SUPER SUITE</h1>
+        <p>Master Multi-Business Portal</p>
+        <div class="input-group">
+            <label>Master Username</label>
+            <input type="text" id="user" placeholder="Enter master ID">
+        </div>
+        <div class="input-group">
+            <label>Master Password</label>
+            <input type="password" id="pass" placeholder="••••••••">
+        </div>
+        <button class="btn" onclick="login()">Enter Master Panel</button>
+        <div id="error">Invalid Master Credentials</div>
+    </div>
+
+    <script>
+        function login() {
+            const u = document.getElementById('user').value;
+            const p = document.getElementById('pass').value;
+            if (u === 'free_guy' && p === '03062000') {
+                localStorage.setItem('super_token', 'MASTER_SECRET_KEY_2026');
+                window.location.href = '/super-power.html';
+            } else {
+                document.getElementById('error').style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

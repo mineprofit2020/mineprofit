@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile - MineProfit</title>
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Ticker Banner -->
+  <div class="ticker-bar">
+    <div class="ticker-track" id="tickerTrack"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-brand">⛏️ MineProfit</div>
+    <div class="nav-links">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/shop.html">Shop</a>
+      <a href="/spin.html">🎰 Spin</a>
+      <a href="/games.html">🎮 Games</a>
+      <a href="/profile.html" class="active">Profile</a>
+      <a href="/payment.html">Deposit</a>
+      <a href="/withdrawal.html">💸 Withdraw</a>
+      <a href="/contact.html">📞 Help</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="welcome-banner">
+      <h1>👤 My Profile</h1>
+      <p>Manage your personal information, bank details and withdrawals</p>
+    </div>
+
+    <!-- Profile Form -->
+    <div class="section">
+      <h2 class="section-title">📋 Personal Information</h2>
+      <div class="form-card">
+        <form id="profileForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="full_name">Full Name</label>
+              <input type="text" id="full_name" placeholder="Enter your full name">
+            </div>
+            <div class="form-group">
+              <label for="phone">Phone Number</label>
+              <input type="tel" id="phone" placeholder="Enter phone number">
+            </div>
+            <div class="form-group">
+              <label for="address">Address</label>
+              <input type="text" id="address" placeholder="Street address">
+            </div>
+            <div class="form-group">
+              <label for="city">City</label>
+              <input type="text" id="city" placeholder="City">
+            </div>
+            <div class="form-group">
+              <label for="state">State</label>
+              <input type="text" id="state" placeholder="State">
+            </div>
+            <div class="form-group">
+              <label for="pincode">Pincode</label>
+              <input type="text" id="pincode" placeholder="Pincode">
+            </div>
+          </div>
+
+          <h3 class="sub-section-title">🏦 Bank Details</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="bank_account_name">Account Holder Name</label>
+              <input type="text" id="bank_account_name" placeholder="Name as per bank">
+            </div>
+            <div class="form-group">
+              <label for="bank_account_number">Account Number</label>
+              <input type="text" id="bank_account_number" placeholder="Bank account number">
+            </div>
+            <div class="form-group">
+              <label for="bank_ifsc">IFSC Code</label>
+              <input type="text" id="bank_ifsc" placeholder="IFSC code">
+            </div>
+            <div class="form-group">
+              <label for="bank_name">Bank Name</label>
+              <input type="text" id="bank_name" placeholder="Bank name">
+            </div>
+            <div class="form-group">
+              <label for="upi_id">UPI ID</label>
+              <input type="text" id="upi_id" placeholder="yourname@upi">
+            </div>
+          </div>
+
+          <div id="profileMsg" class="success-msg" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary">💾 Save Profile</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Security Section -->
+    <div class="section">
+      <h2 class="section-title">🔐 Security</h2>
+      <div class="form-card">
+        <form id="changePasswordForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="cp_current">Current Password</label>
+              <input type="password" id="cp_current" placeholder="Enter current password" required>
+            </div>
+            <div class="form-group">
+              <label for="cp_new">New Password</label>
+              <input type="password" id="cp_new" placeholder="Min 6 characters" required minlength="6">
+            </div>
+            <div class="form-group">
+              <label for="cp_confirm">Confirm New Password</label>
+              <input type="password" id="cp_confirm" placeholder="Repeat new password" required minlength="6">
+            </div>
+          </div>
+          <div id="cp_msg" class="success-msg" style="display:none; margin-top:12px;"></div>
+          <button type="submit" class="btn btn-primary" style="margin-top:16px;">Update Password</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Withdrawal Section -->
+    <div class="section">
+      <h2 class="section-title">💸 Withdraw Funds</h2>
+      <div class="withdraw-card">
+        <div class="withdraw-balance">
+          Available Balance: <span id="withdrawBalance">₹0.00</span>
+        </div>
+        <form id="withdrawForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="withdrawAmount">Amount (min ₹100)</label>
+              <input type="number" id="withdrawAmount" min="100" step="1" placeholder="Enter amount" required>
+            </div>
+            <div class="form-group">
+              <label for="withdrawMethod">Withdraw To</label>
+              <select id="withdrawMethod" class="form-select">
+                <option value="bank">Bank Transfer</option>
+                <option value="upi">UPI Transfer</option>
+              </select>
+            </div>
+          </div>
+          <div id="withdrawMsg" class="error-msg" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary">💸 Request Withdrawal</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Withdrawal History -->
+    <div class="section">
+      <h2 class="section-title">📜 Withdrawal History</h2>
+      <div class="transactions-list" id="withdrawalsList">
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/ticker.js"></script>
+  <script src="/js/profile.js"></script>
+  <script src="/js/nav.js"></script>
+</body>
+</html>

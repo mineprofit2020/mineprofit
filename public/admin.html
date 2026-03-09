@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - MineProfit</title>
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/admin-mobile.css">
+</head>
+<body>
+  <!-- Admin Login -->
+  <div id="adminLogin" class="auth-page">
+    <div class="auth-container">
+      <div class="auth-card">
+        <div class="auth-header">
+          <div class="logo">🔐 Admin Panel</div>
+          <p class="subtitle">MineProfit Administration</p>
+        </div>
+        <form id="adminLoginForm">
+          <div class="form-group">
+            <label for="adminUser">Username</label>
+            <input type="text" id="adminUser" placeholder="Admin username" required>
+          </div>
+          <div class="form-group">
+            <label for="adminPass">Password</label>
+            <input type="password" id="adminPass" placeholder="Admin password" required>
+          </div>
+          <div id="adminLoginErr" class="error-msg" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary btn-full">Login to Admin</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Dashboard -->
+  <div id="adminDashboard" style="display:none;">
+    <nav class="navbar">
+      <div class="nav-brand">🔐 Admin Panel</div>
+      <div class="nav-links">
+        <a href="#" class="admin-tab active" data-tab="overview">Dashboard</a>
+        <a href="#" class="admin-tab" data-tab="users">Users</a>
+        <a href="#" class="admin-tab" data-tab="withdrawals">Withdrawals</a>
+        <a href="#" class="admin-tab" data-tab="payments">Payments</a>
+        <a href="#" class="admin-tab" data-tab="game-history">🕹️ Games</a>
+        <a href="#" class="admin-tab" data-tab="messages">Messages</a>
+        <a href="#" class="admin-tab" data-tab="settings">⚙️ Settings</a>
+        <a href="#" id="adminLogoutBtn">Logout</a>
+      </div>
+    </nav>
+
+    <!-- Mobile scrollable admin tabs (visible ≤768px) -->
+    <div class="admin-nav-mobile" style="display:none;">
+      <a href="#" class="active" data-tab="overview">📊 Dash</a>
+      <a href="#" data-tab="users">👥 Users</a>
+      <a href="#" data-tab="withdrawals">💸 W/D</a>
+      <a href="#" data-tab="payments">💳 Pay</a>
+      <a href="#" data-tab="game-history">🕹️ Games</a>
+      <a href="#" data-tab="messages">📨 Msg</a>
+      <a href="#" data-tab="settings">⚙️ Set</a>
+      <a href="#" id="adminMobileLogout">🚪 Exit</a>
+    </div>
+
+    <div class="container">
+      <!-- Overview Tab -->
+      <div class="admin-panel" id="panel-overview">
+        <h2 class="section-title">📊 Dashboard Overview</h2>
+        <div class="stats-grid" id="adminStats"></div>
+        <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
+          <a href="/api/admin/export/users" class="btn btn-primary" target="_blank">📥 Export Users</a>
+          <a href="/apk/mineprofit-admin.apk" class="btn btn-buy">⬇️ Admin APK</a>
+          <button class="btn btn-primary" onclick="document.querySelector('[data-tab=settings]').click()">⚙️ All Settings</button>
+        </div>
+      </div>
+
+      <!-- Settings Hub (New) -->
+      <div class="admin-panel" id="panel-settings" style="display:none;">
+        <h2 class="section-title">⚙️ System Configuration</h2>
+        <div class="settings-grid" id="settings-grid-view">
+          <div class="setting-card" onclick="openSubTab('machines')">
+            <div class="setting-icon">⚙️</div>
+            <h3>Machines</h3>
+            <p>Edit prices, earnings, and icons</p>
+          </div>
+          <div class="setting-card" onclick="openSubTab('paysettings')">
+            <div class="setting-icon">💳</div>
+            <h3>Payment Settings</h3>
+            <p>Gateways, UPI, Crypto, Limits</p>
+          </div>
+          <div class="setting-card" onclick="openSubTab('spin')">
+            <div class="setting-icon">🎰</div>
+            <h3>Spin & Games</h3>
+            <p>Costs, Difficulty, Prizes</p>
+          </div>
+          <div class="setting-card" onclick="openSubTab('partners')">
+            <div class="setting-icon">🤝</div>
+            <h3>Partners</h3>
+            <p>Manage partner accounts</p>
+          </div>
+          <div class="setting-card" onclick="openSubTab('security')">
+            <div class="setting-icon">🔐</div>
+            <h3>Security</h3>
+            <p>Change admin password</p>
+          </div>
+          <div class="setting-card" onclick="openSubTab('reports')">
+            <div class="setting-icon">📊</div>
+            <h3>Reports</h3>
+            <p>Download CSVs and Analytics</p>
+          </div>
+          <div class="setting-card" onclick="openSubTab('history')">
+            <div class="setting-icon">🔍</div>
+            <h3>User History</h3>
+            <p>Lookup specific user actions</p>
+          </div>
+          <div class="setting-card" onclick="window.open('/admin-game-settings.html', '_blank')">
+            <div class="setting-icon">🚀</div>
+            <h3>Live Game Settings</h3>
+            <p>Control Space Traveler & Sync</p>
+          </div>
+          <!-- Secret Master Power Tab -->
+          <div id="super-power-card" class="setting-card" style="display:none; border: 1px solid var(--gold);" onclick="openSuperPortal()">
+            <div class="setting-icon">⚡</div>
+            <h3>Master Power Portal</h3>
+            <p>Switch between assigned business sites</p>
+          </div>
+        </div>
+
+        <!-- Master Portal Modal -->
+        <div id="super-portal-modal" class="modal-overlay" style="display:none; z-index: 2000;">
+          <div class="modal" style="max-width: 500px;">
+            <h3>Switch Master Business Context</h3>
+            <p>You have master admin permission to manage these sites:</p>
+            <div id="portal-site-list" style="display:grid; gap:10px; margin-bottom:20px;">
+              <!-- Sites injected here -->
+            </div>
+            <button class="btn btn-cancel" onclick="closeSuperPortal()">Close</button>
+          </div>
+        </div>
+
+        <!-- Sub-panels container (hidden by default) -->
+        <div id="settings-subpanels" style="margin-top:20px; border-top:1px solid var(--border); padding-top:20px; display:none;">
+          <button class="btn btn-buy" onclick="closeSubTabs()" style="margin-bottom:15px;">⬅️ Back to Settings</button>
+          
+          <!-- Machines Sub-Panel -->
+          <div class="sub-panel" id="sub-machines" style="display:none;">
+             <h2 class="section-title">⚙️ Manage Machines</h2>
+             <div id="adminMachines"></div>
+          </div>
+
+          <!-- Security Sub-Panel -->
+          <div class="sub-panel" id="sub-security" style="display:none;">
+            <h2 class="section-title">🔐 Change Admin Password</h2>
+            <div class="admin-item-card" style="max-width:520px; margin:0 auto;">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="ap_current">Current Password</label>
+                  <input type="password" id="ap_current" placeholder="Enter current password">
+                </div>
+                <div class="form-group">
+                  <label for="ap_new">New Password</label>
+                  <input type="password" id="ap_new" placeholder="Min 6 characters">
+                </div>
+                <div class="form-group">
+                  <label for="ap_confirm">Confirm New Password</label>
+                  <input type="password" id="ap_confirm" placeholder="Re-enter new password">
+                </div>
+              </div>
+              <div id="ap_msg" class="success-msg" style="display:none; margin-top:12px;"></div>
+              <button class="btn btn-primary" style="width:100%; margin-top:14px;" onclick="changeAdminPassword()">Update Password</button>
+            </div>
+
+            <div class="admin-item-card" style="max-width:720px; margin:16px auto 0; border:1px solid rgba(239,68,68,0.35);">
+              <h3 style="margin-bottom:10px;">🧨 Danger Zone</h3>
+              <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:16px;">
+                Clear all deposit + withdrawal requests and related transactions. Pending withdrawals will be refunded before clearing.
+              </p>
+              <button class="btn-admin btn-coral" style="width:100%;" onclick="resetFinanceData()">🧹 Clear Deposits & Withdrawals</button>
+              <div id="resetFinanceMsg" class="success-msg" style="display:none; margin-top:12px;"></div>
+            </div>
+
+            <div class="admin-item-card" style="max-width:720px; margin:16px auto 0; border:1px solid rgba(239,68,68,0.5);">
+              <h3 style="margin-bottom:10px;">🧨 Full Reset (Fresh Start)</h3>
+              <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:16px;">
+                Deletes ALL users, profiles, machines owned by users, deposits, withdrawals, transactions, notifications and messages. Admins, partners, settings and catalogs remain.
+              </p>
+              <button class="btn-admin btn-coral" style="width:100%;" onclick="resetAllData()">🗑️ Delete ALL Users & Data</button>
+              <div id="resetAllMsg" class="success-msg" style="display:none; margin-top:12px;"></div>
+            </div>
+          </div>
+
+          <!-- Pay Settings Sub-Panel -->
+          <div class="sub-panel" id="sub-paysettings" style="display:none;">
+            <h2 class="section-title">💳 Payment Receiving Settings</h2>
+            <!-- Box: Withdrawal Caps -->
+            <div class="admin-item-card">
+              <h3 style="margin-bottom:12px;">💸 Withdrawal Limits</h3>
+              <div class="form-grid">
+                <div class="form-group"><label>Per-Transaction UPI Cap (₹)</label><input type="number" id="ps_withdraw_cap_upi" placeholder="e.g., 5000"></div>
+                <div class="form-group"><label>Per-Transaction Bank Cap (₹)</label><input type="number" id="ps_withdraw_cap_bank" placeholder="e.g., 25000"></div>
+                <div class="form-group"><label>Daily Withdrawal Cap (₹) (Optional)</label><input type="number" id="ps_withdraw_daily_cap" placeholder="e.g., 50000"></div>
+                <div class="form-group"><label>Frequency Limit (Count)</label><input type="number" id="ps_withdraw_frequency_limit" placeholder="e.g., 1 (0 to disable)"></div>
+                <div class="form-group"><label>Frequency Period (Hours)</label><input type="number" id="ps_withdraw_frequency_hours" placeholder="e.g., 24"></div>
+              </div>
+              <div id="paySettingsMsg" class="success-msg" style="display:none; margin-top:10px;"></div>
+              <button class="btn btn-primary" onclick="savePaySettings()">💾 Save Payment Settings</button>
+            </div>
+            <!-- Box: Exchange Rate -->
+            <div class="admin-item-card" style="margin-top:16px;">
+              <h3 style="margin-bottom:12px;">💱 Exchange Rate</h3>
+              <div class="form-grid">
+                <div class="form-group"><label>USDT to INR Rate (₹)</label><input type="number" id="ps_usdt_inr_rate" placeholder="e.g., 101"></div>
+              </div>
+              <button class="btn btn-primary" onclick="savePaySettings()">💾 Save Payment Settings</button>
+            </div>
+            <div class="admin-item-card" style="margin-top:16px;">
+              <h3 style="margin-bottom:12px;">🏦 Payment Gateways</h3>
+              <div class="form-grid" style="margin-top:12px;">
+                <div class="form-group"><label>Method</label><select id="gw_method"><option value="upi">UPI</option><option value="bank">Bank</option></select></div>
+                <div class="form-group"><label>Label</label><input id="gw_label"></div>
+                <div class="form-group"><label>UPI ID</label><input id="gw_upi_id"></div>
+                <div class="form-group"><label>UPI Name</label><input id="gw_upi_name"></div>
+                <div class="form-group"><label>QR Image</label><input id="gw_qr_url" placeholder="Upload a QR image below" readonly></div>
+                <div class="form-group"><label>Bank Name</label><input id="gw_bank_name"></div>
+                <div class="form-group"><label>Account Name</label><input id="gw_bank_accname"></div>
+                <div class="form-group"><label>Account Number</label><input id="gw_bank_accno"></div>
+                <div class="form-group"><label>IFSC</label><input id="gw_bank_ifsc"></div>
+                <div class="form-group" style="grid-column:1/-1;">
+                  <label>Upload QR Image (UPI)</label>
+                  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <input type="file" id="gw_qr_file" accept="image/*" style="flex:1; min-width:220px;">
+                    <button type="button" class="btn btn-primary" onclick="uploadQrImage('gw_qr_file','gw_qr_url')">Upload</button>
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('gw_qr_url').value='';">Remove</button>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-buy" onclick="addGateway()">➕ Add Gateway</button>
+            </div>
+            <div class="admin-item-card" style="margin-top:16px;">
+              <h3 style="margin-bottom:12px;">🪙 Crypto Gateway</h3>
+              <div class="form-grid" style="margin-top:12px;">
+                <div class="form-group"><label>Symbol</label><input id="ct_symbol" placeholder="e.g., USDT"></div>
+                <div class="form-group"><label>Name</label><input id="ct_name" placeholder="Token name"></div>
+                <div class="form-group"><label>Network</label><input id="ct_network" placeholder="e.g., TRC20"></div>
+                <div class="form-group" style="grid-column:1/-1;"><label>Address</label><input id="ct_address" placeholder="Wallet address"></div>
+                <div class="form-group" style="grid-column:1/-1;"><label>QR Image</label><input id="ct_qr" placeholder="Upload a QR image below" readonly></div>
+                <div class="form-group" style="grid-column:1/-1;">
+                  <label>Upload QR Image (Crypto)</label>
+                  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <input type="file" id="ct_qr_file" accept="image/*" style="flex:1; min-width:220px;">
+                    <button type="button" class="btn btn-primary" onclick="uploadQrImage('ct_qr_file','ct_qr')">Upload</button>
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('ct_qr').value='';">Remove</button>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-buy" onclick="addToken()">➕ Add Token</button>
+            </div>
+            <div class="admin-item-card" style="margin-top:16px;">
+              <h3 style="margin-bottom:12px;">📦 All Payment Options (UPI / Bank / Crypto)</h3>
+              <div id="allGatewaysList" class="admin-scroll-table"></div>
+            </div>
+          </div>
+
+          <!-- Spin Sub-Panel -->
+          <div class="sub-panel" id="sub-spin" style="display:none;">
+            <h2 class="section-title">🎰 Spin & Games Settings</h2>
+            <div class="admin-item-card">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Spin Cost (₹)</label>
+                  <input type="number" id="spin_cost" value="200">
+                </div>
+                <div class="form-group">
+                  <label>Spin Reward Multiplier</label>
+                  <input type="number" step="0.1" id="spin_reward_mul" value="1">
+                </div>
+              </div>
+              
+              <div class="control-section" style="margin-top:20px; border-top:1px solid var(--border); padding-top:20px;">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:15px;">
+                  <h3 style="margin:0;">Difficulty Adjuster</h3>
+                  <div class="info-icon" title="Higher difficulty means users win less frequently or smaller amounts. 0 = Easy (High Payouts), 100 = Hard (Low Payouts).">ℹ️</div>
+                </div>
+                
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>Wheel Spin Difficulty (0–100): <span id="spin_diff_num" style="color:var(--gold); font-weight:bold;">0</span></label>
+                    <input type="range" id="spin_diff" min="0" max="100" value="0" style="width:100%;">
+                  </div>
+                  <div class="form-group">
+                    <label>All Games Difficulty (0–100): <span id="all_games_diff_num" style="color:var(--gold); font-weight:bold;">0</span></label>
+                    <input type="range" id="all_games_diff" min="0" max="100" value="0" style="width:100%;">
+                  </div>
+                </div>
+                
+                <div class="rules-card" style="margin-top:15px; background:rgba(244,196,48,0.05); border:1px dashed var(--gold-dim); padding:12px; border-radius:8px;">
+                  <p style="font-size:0.85rem; color:var(--text-secondary); margin:0;">
+                    <strong>💡 How to use:</strong><br>
+                    • <strong>Spin Difficulty:</strong> Controls the win weights of the Wheel Spin prizes.<br>
+                    • <strong>Games Difficulty:</strong> Controls payout multipliers for Slots, Lucky Number, and Dice Royale.<br>
+                    • <strong>Reward Multiplier:</strong> Globally increases/decreases all cash prizes.
+                  </p>
+                </div>
+              </div>
+
+              <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:20px;">
+                <button class="btn btn-primary" onclick="saveSpinSettingsSimplified()">💾 Save All Settings</button>
+              </div>
+            </div>
+
+            <div class="admin-item-card" style="margin-top:16px;">
+              <h3 style="margin-bottom:12px;">Spin Prizes Configuration</h3>
+              <div id="spinPrizes"></div>
+              <div style="margin-top:12px;">
+                <button class="btn btn-buy" onclick="addSpinPrize()">➕ Add New Prize</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Partners Sub-Panel -->
+          <div class="sub-panel" id="sub-partners" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+              <h2 class="section-title" style="margin:0;">🤝 Manage Partners</h2>
+              <a href="/partners.html" target="_blank" class="btn btn-primary" style="text-decoration:none; display:flex; align-items:center; gap:8px;">
+                🚪 Partner Login Portal
+              </a>
+            </div>
+            <div class="admin-item-card" style="margin-bottom:20px;">
+              <h3 style="margin-bottom:12px;">➕ Create New Partner</h3>
+              <div class="form-grid">
+                <div class="form-group"><label>Username</label><input type="text" id="pr_username"></div>
+                <div class="form-group"><label>Password</label><input type="password" id="pr_password"></div>
+                <div class="form-group"><label>Active</label><select id="pr_active"><option value="1">Yes</option><option value="0">No</option></select></div>
+                <div class="form-group"><label>Dashboard Access</label><select id="pr_dash"><option value="0">No</option><option value="1">Yes</option></select></div>
+                <div class="form-group"><label>Deposit Access</label><select id="pr_dep"><option value="0">No</option><option value="1">Yes</option></select></div>
+                <div class="form-group"><label>Withdrawal Access</label><select id="pr_wd"><option value="0">No</option><option value="1">Yes</option></select></div>
+                <div class="form-group"><label>Messages/Broadcast</label><select id="pr_msg"><option value="0">No</option><option value="1">Yes</option></select></div>
+                <div class="form-group"><label>User Management</label><select id="pr_users"><option value="0">No</option><option value="1">Yes</option></select></div>
+                <div class="form-group"><label>Profile Access</label><select id="pr_prof"><option value="0">No</option><option value="1">Yes</option></select></div>
+                <div class="form-group"><label>Settings Access</label><select id="pr_settings"><option value="0">No</option><option value="1">Yes</option></select></div>
+                <div class="form-group"><label>Machines Access</label><select id="pr_machines"><option value="0">No</option><option value="1">Yes</option></select></div>
+                <div class="form-group"><label>Spin Access</label><select id="pr_spin"><option value="0">No</option><option value="1">Yes</option></select></div>
+                <div class="form-group"><label>Gateways Access</label><select id="pr_gateways"><option value="0">No</option><option value="1">Yes</option></select></div>
+                <div class="form-group"><label>History Access</label><select id="pr_history"><option value="0">No</option><option value="1">Yes</option></select></div>
+                <div class="form-group"><label>Reports Access</label><select id="pr_reports"><option value="0">No</option><option value="1">Yes</option></select></div>
+                <div class="form-group"><label>Security Access</label><select id="pr_security"><option value="0">No</option><option value="1">Yes</option></select></div>
+                <div class="form-group"><label>User Controls</label><select id="pr_controls"><option value="0">No</option><option value="1">Yes</option></select></div>
+                <div class="form-group"><label>Password Reset Access</label><select id="pr_passwords"><option value="0">No</option><option value="1">Yes</option></select></div>
+                <div class="form-group"><label>Deposit Limit (₹)</label><input type="number" id="pr_dep_lim"></div>
+                <div class="form-group"><label>Withdraw Limit (₹)</label><input type="number" id="pr_wd_lim"></div>
+              </div>
+              <div id="pr_msgbox" style="display:none; margin-top:10px;"></div>
+              <button class="btn btn-buy" style="margin-top:15px;" onclick="createPartner()">➕ Create Partner</button>
+            </div>
+            <div id="partnersList"></div>
+          </div>
+
+          <!-- Reports Sub-Panel -->
+          <div class="sub-panel" id="sub-reports" style="display:none;">
+            <h2 class="section-title">📊 Download Reports (CSV / Excel-Compatible)</h2>
+            <div class="admin-item-card" style="margin-bottom:16px;">
+              <div class="form-grid">
+                <div class="form-group"><label>From (YYYY-MM-DD)</label><input type="text" id="r_from" placeholder="2026-03-01"></div>
+                <div class="form-group"><label>To (YYYY-MM-DD)</label><input type="text" id="r_to" placeholder="2026-03-31"></div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <a id="r_tx_btn" href="/api/admin/export/report-transactions" class="btn btn-primary" target="_blank">📥 Download Transactions (Filtered)</a>
+                <a id="r_dep_btn" href="/api/admin/export/report-deposits" class="btn btn-primary" target="_blank">📥 Download Deposits (Filtered)</a>
+                <a id="r_wd_btn" href="/api/admin/export/report-withdrawals" class="btn btn-primary" target="_blank">📥 Download Withdrawals (Filtered)</a>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
+              <div class="admin-item-card" style="text-align:center;">
+                <div style="font-size:3rem;margin-bottom:12px;">📈</div>
+                <h3 style="margin-bottom:8px;">Profit & Loss Report</h3>
+                <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:16px;">Deposits, withdrawals, mining payouts, referral commissions, net P&L, outstanding balances</p>
+                <a href="/api/admin/export/report-pnl" class="btn btn-primary" target="_blank" style="width:100%;">📥 Download P&L Report</a>
+              </div>
+              <div class="admin-item-card" style="text-align:center;">
+                <div style="font-size:3rem;margin-bottom:12px;">👥</div>
+                <h3 style="margin-bottom:8px;">Advanced User Report</h3>
+                <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:16px;">All users with balance, earnings, referrals, machines, bank details, and activity stats</p>
+                <a href="/api/admin/export/report-users" class="btn btn-primary" target="_blank" style="width:100%;">📥 Download User Report</a>
+              </div>
+              <div class="admin-item-card" style="text-align:center;">
+                <div style="font-size:3rem;margin-bottom:12px;">📜</div>
+                <h3 style="margin-bottom:8px;">Transaction Report</h3>
+                <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:16px;">Every transaction — mining, purchases, referrals, bonuses, deposits, withdrawals</p>
+                <a href="/api/admin/export/report-transactions" class="btn btn-primary" target="_blank" style="width:100%;">📥 Download Transactions</a>
+              </div>
+              <div class="admin-item-card" style="text-align:center;">
+                <div style="font-size:3rem;margin-bottom:12px;">🧭</div>
+                <h3 style="margin-bottom:8px;">Detailed Activity Log</h3>
+                <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:16px;">Per-transaction log with user details and types for audits</p>
+                <a id="r_activity_btn" href="/api/admin/export/report-activity" class="btn btn-primary" target="_blank" style="width:100%;">📥 Download Activity Log</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- History Sub-Panel -->
+          <div class="sub-panel" id="sub-history" style="display:none;">
+            <h2 class="section-title">🔍 User History Lookup</h2>
+            <div class="admin-item-card">
+              <div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:20px;">
+                <div class="form-group" style="flex:1;margin-bottom:0;">
+                  <label for="historyUsername">Enter Username</label>
+                  <input type="text" id="historyUsername" placeholder="Type exact username...">
+                </div>
+                <button class="btn btn-primary" onclick="lookupUserHistory()" style="height:44px;">🔍 Search</button>
+              </div>
+              <div id="historyError" class="error-msg" style="display:none;"></div>
+            </div>
+            <div id="historyResult" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users Tab (Redesigned) -->
+      <div class="admin-panel" id="panel-users" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px;">
+          <h2 class="section-title" style="margin:0;">👥 User Management</h2>
+          <button class="btn btn-primary" onclick="showCreateUserModal()">➕ Create New User</button>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <div class="form-group" style="margin-bottom:0;">
+            <label>Search Users</label>
+            <input type="text" id="u_search" class="input-admin" placeholder="Username, Email, Mobile..." onkeyup="debounceLoadUsers()">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label>Sort By</label>
+            <select id="u_sort" class="input-admin" onchange="loadUsers()">
+              <option value="created_at">Date Joined</option>
+              <option value="balance">Wallet Balance</option>
+              <option value="total_deposited">Total Deposited</option>
+              <option value="total_won">Total Winnings</option>
+              <option value="referral_count">Invites</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label>Order</label>
+            <select id="u_order" class="input-admin" onchange="loadUsers()">
+              <option value="DESC">High to Low</option>
+              <option value="ASC">Low to High</option>
+            </select>
+          </div>
+          <button class="btn-admin btn-indigo" onclick="loadUsers()" style="height:40px; margin-top:24px;">Apply Filters</button>
+        </div>
+
+        <div class="admin-table-wrap" id="adminUsers"></div>
+        
+        <!-- Pagination Controls -->
+        <div class="pagination-controls" style="display:flex; justify-content:center; gap:10px; margin-top:20px;">
+          <button class="btn btn-buy" onclick="changeUserPage(-1)">Previous</button>
+          <span id="userPageNum" style="align-self:center; font-weight:bold;">Page 1</span>
+          <button class="btn btn-buy" onclick="changeUserPage(1)">Next</button>
+        </div>
+      </div>
+
+      <!-- Create User Modal (Initially hidden) -->
+      <div id="modal-createuser" class="modal-overlay" style="display:none;">
+        <div class="modal">
+          <span class="close" onclick="closeCreateUserModal()" style="position:absolute; right:20px; top:15px; font-size:1.5rem; cursor:pointer;">&times;</span>
+          <h2 class="section-title">➕ Create New User</h2>
+          <form id="createUserForm">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="cu_username">Username</label>
+                <input type="text" id="cu_username" placeholder="Username" required>
+              </div>
+              <div class="form-group">
+                <label for="cu_email">Email</label>
+                <input type="email" id="cu_email" placeholder="Email address" required>
+              </div>
+              <div class="form-group">
+                <label for="cu_password">Password</label>
+                <input type="text" id="cu_password" placeholder="Min 6 characters" required minlength="6">
+              </div>
+              <div class="form-group">
+                <label for="cu_balance">Initial Balance (₹)</label>
+                <input type="number" id="cu_balance" value="0" min="0" step="1">
+              </div>
+              <div class="form-group">
+                <label for="cu_spins">Free Spins</label>
+                <input type="number" id="cu_spins" value="1" min="0">
+              </div>
+            </div>
+            <div id="createUserMsg" class="success-msg" style="display:none;"></div>
+            <button type="submit" class="btn btn-primary">➕ Create User</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Withdrawals Tab -->
+      <div class="admin-panel" id="panel-withdrawals" style="display:none;">
+        <h2 class="section-title">💸 Withdrawal Requests</h2>
+        <div id="adminWithdrawals"></div>
+      </div>
+
+      <!-- Payments Tab -->
+      <div class="admin-panel" id="panel-payments" style="display:none;">
+        <h2 class="section-title">💳 Deposit Payments</h2>
+        <div id="adminPayments"></div>
+      </div>
+
+      <!-- Game History Tab -->
+      <div class="admin-panel" id="panel-game-history" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h2 class="section-title" style="margin:0;">🕹️ Global Game History</h2>
+          <button class="btn btn-primary" onclick="loadGameHistory()">🔄 Refresh History</button>
+        </div>
+        <div class="admin-item-card">
+          <div id="adminGameHistory" class="admin-scroll-table"></div>
+        </div>
+      </div>
+
+      <!-- Messages Tab -->
+      <div class="admin-panel" id="panel-messages" style="display:none;">
+        <h2 class="section-title">📨 Broadcast & Inbox</h2>
+        <div class="admin-item-card">
+          <h3 style="margin-bottom:12px;">Send Broadcast / Targeted Message</h3>
+          <div class="form-grid">
+            <div class="form-group"><label>Title</label><input type="text" id="bc_title" placeholder="Promo title or subject"></div>
+            <div class="form-group"><label>Type</label><select id="bc_type"><option value="promo">promo</option><option value="personal">personal</option></select></div>
+            <div class="form-group" style="grid-column:1/-1;"><label>Message</label><textarea id="bc_message" rows="4" placeholder="Write your message..."></textarea></div>
+            <div class="form-group"><label>Target</label><select id="bc_target" onchange="toggleBroadcastTarget()"><option value="all">All Users</option><option value="usernames">Specific Users</option></select></div>
+            <div class="form-group" id="bc_users_wrap" style="display:none; grid-column:1/-1;">
+              <label>Search & Add Users</label>
+              <div style="display:flex; gap:10px;">
+                <input type="text" id="bc_user_search" placeholder="Type username..." onkeyup="searchUsersForBroadcast(this.value)">
+              </div>
+              <div id="bc_search_results" class="search-chips" style="margin-top:5px; max-height:100px; overflow-y:auto; border:1px solid var(--border); padding:5px; display:none;"></div>
+              <div style="margin-top:8px;">Selected:</div>
+              <div id="bc_selected_users" class="search-chips"></div>
+              <input type="hidden" id="bc_usernames">
+            </div>
+            <div class="form-group"><label>Expires At</label><input type="datetime-local" id="bc_expires"></div>
+            <div class="form-group"><label>Require Acceptance</label><select id="bc_require"><option value="0">No</option><option value="1">Yes</option></select></div>
+          </div>
+          <div id="bc_msg" class="success-msg" style="display:none;"></div>
+          <button class="btn btn-primary" onclick="sendBroadcast()">📤 Send Message</button>
+        </div>
+
+        <div class="admin-item-card" style="margin-top:16px;">
+          <h3 style="margin-bottom:12px;">Recently Sent</h3>
+          <div id="broadcastList"></div>
+        </div>
+
+        <h2 class="section-title" style="margin-top:24px;">📨 Contact Messages</h2>
+        <div id="adminMessages"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/admin.js?v=3"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Check for Super Power Permission from real DB
+      try {
+        const res = await fetch('/api/admin/assigned-sites');
+        const data = await res.json();
+        
+        if (data.success && data.sites.length > 0) {
+          document.getElementById('super-power-card').style.display = 'block';
+          window.assignedSites = data.sites;
+          
+          // Show current running site in UI if needed
+          const running = data.sites.find(s => s.is_running);
+          if (running) {
+            console.log('Running site:', running.name);
+          }
+        }
+      } catch (err) { console.error('Super Power check failed:', err); }
+    });
+
+    // --- SUPER PORTAL LOGIC ---
+    function openSuperPortal() {
+      const list = document.getElementById('portal-site-list');
+      list.innerHTML = (window.assignedSites || []).map(site => `
+        <button class="btn ${site.is_running ? 'btn-buy' : 'btn-cancel'}" 
+                style="text-align:left; justify-content:flex-start; padding:15px; border: ${site.is_running ? '2px solid var(--gold)' : '1px solid var(--border)'};" 
+                onclick="switchToSite('${site.id}')">
+          🏢 ${site.name} ${site.is_running ? '<span class="badge" style="background:var(--gold); color:#000; margin-left:10px;">RUNNING</span>' : ''}
+          <span style="margin-left:auto; opacity:0.6; font-size:0.7rem;">ID: ${site.id}</span>
+        </button>
+      `).join('');
+      document.getElementById('super-portal-modal').style.display = 'flex';
+    }
+
+    function closeSuperPortal() {
+      document.getElementById('super-portal-modal').style.display = 'none';
+    }
+
+    async function switchToSite(id) {
+      try {
+        const res = await fetch('/api/admin/switch-site', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ business_id: id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`Success! Now managing: ${id}`);
+          window.location.reload(); // Reload to apply context
+        }
+      } catch (err) { console.error(err); }
+    }
+
+    // Sync mobile admin tabs with desktop tabs
+    document.querySelectorAll('.admin-nav-mobile a[data-tab]').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        const tab = a.dataset.tab;
+        // Trigger existing tab logic by clicking the matching desktop tab
+        const desktopTab = document.querySelector('.nav-links .admin-tab[data-tab="' + tab + '"]');
+        if (desktopTab) desktopTab.click();
+        // Update mobile active state
+        document.querySelectorAll('.admin-nav-mobile a').forEach(b => b.classList.remove('active'));
+        a.classList.add('active');
+        // Scroll selected tab into view
+        a.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      });
+    });
+    // Also sync when desktop tabs are clicked
+    document.querySelectorAll('.nav-links .admin-tab[data-tab]').forEach(a => {
+      a.addEventListener('click', () => {
+        const tab = a.dataset.tab;
+        document.querySelectorAll('.admin-nav-mobile a').forEach(b => {
+          b.classList.toggle('active', b.dataset.tab === tab);
+        });
+      });
+    });
+    // Mobile logout
+    const ml = document.getElementById('adminMobileLogout');
+    if (ml) ml.addEventListener('click', e => { e.preventDefault(); document.getElementById('adminLogoutBtn').click(); });
+  </script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shop - MineProfit</title>
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Ticker Banner -->
+  <div class="ticker-bar">
+    <div class="ticker-track" id="tickerTrack"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-brand">⛏️ MineProfit</div>
+    <div class="nav-links">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/shop.html" class="active">Shop</a>
+      <a href="/spin.html">🎰 Spin</a>
+      <a href="/games.html">🎮 Games</a>
+      <a href="/profile.html">Profile</a>
+      <a href="/payment.html">Deposit</a>
+      <a href="/withdrawal.html">💸 Withdraw</a>
+      <a href="/contact.html">📞 Help</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="shop-header">
+      <h1>🏪 Mining Machine Shop</h1>
+      <div class="shop-balance">
+        Your Balance: <span id="shopBalance">₹0.00</span>
+      </div>
+    </div>
+
+    <div class="shop-grid" id="shopGrid">
+      <div class="loading">Loading machines...</div>
+    </div>
+  </div>
+
+  <!-- Buy Confirmation Modal -->
+  <div class="modal-overlay" id="buyModal" style="display:none;">
+    <div class="modal">
+      <h3>Confirm Purchase</h3>
+      <p id="modalText"></p>
+      <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="closeBuyModal()">Cancel</button>
+        <button class="btn btn-primary" id="confirmBuyBtn">Buy Now</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/ticker.js"></script>
+  <script src="/js/shop.js"></script>
+  <script src="/js/nav.js"></script>
+</body>
+</html>

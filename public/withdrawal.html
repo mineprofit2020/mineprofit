@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Withdraw - MineProfit</title>
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Ticker Banner -->
+  <div class="ticker-bar">
+    <div class="ticker-track" id="tickerTrack"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-brand">⛏️ MineProfit</div>
+    <div class="nav-links">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/shop.html">Shop</a>
+      <a href="/spin.html">🎰 Spin</a>
+      <a href="/games.html">🎮 Games</a>
+      <a href="/profile.html">Profile</a>
+      <a href="/payment.html">Deposit</a>
+      <a href="/withdrawal.html" class="active">💸 Withdraw</a>
+      <a href="/contact.html">📞 Help</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="welcome-banner" style="text-align:center;">
+      <h1>💸 Withdraw Funds</h1>
+      <p>Transfer your mining earnings to your bank or UPI account</p>
+    </div>
+
+    <div class="news-bar" id="withdrawNewsBar"></div>
+
+    <!-- Balance & Stats -->
+    <div class="stats-grid" style="margin-bottom:24px;">
+      <div class="stat-card balance-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-info">
+          <div class="stat-label">Available Balance</div>
+          <div class="stat-value" id="withdrawBalance">₹0.00</div>
+        </div>
+      </div>
+      <div class="stat-card earning-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-info">
+          <div class="stat-label">Total Withdrawn</div>
+          <div class="stat-value" id="totalWithdrawn">₹0.00</div>
+        </div>
+      </div>
+      <div class="stat-card uncollected-card">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-info">
+          <div class="stat-label">Pending</div>
+          <div class="stat-value" id="pendingWithdrawals">₹0.00</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Withdrawal Form -->
+    <div class="section">
+      <h2 class="section-title">📤 Request Withdrawal</h2>
+      <div class="withdraw-card">
+        <form id="withdrawForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="withdrawAmount">Amount (min ₹100)</label>
+              <input type="number" id="withdrawAmount" min="100" step="1" placeholder="Enter amount to withdraw" required>
+            </div>
+            <div class="form-group">
+              <label for="withdrawMethod">Withdraw To</label>
+              <select id="withdrawMethod" class="form-select">
+                <option value="bank">🏦 Bank Transfer</option>
+                <option value="upi">📱 UPI Transfer</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Bank/UPI details preview -->
+          <div id="bankDetails" class="payment-detail-preview">
+            <div class="detail-preview-title">Withdrawing to:</div>
+            <div id="bankPreview" class="detail-preview-content">
+              <span id="bankPreviewText">—</span>
+              <a href="/profile.html" class="btn-link-sm">Edit</a>
+            </div>
+          </div>
+
+          <div id="withdrawMsg" class="error-msg" style="display:none;"></div>
+          <div id="withdrawSuccess" class="success-msg" style="display:none;"></div>
+
+          <button type="submit" class="btn btn-primary" style="margin-top:8px;">💸 Request Withdrawal</button>
+        </form>
+
+        <div class="withdraw-note">
+          <p>⏱️ Withdrawals are processed within <strong>30 minutes</strong>.</p>
+          <p>📋 Make sure your <a href="/profile.html">bank/UPI details</a> are up to date before requesting.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Withdrawal History -->
+    <div class="section">
+      <h2 class="section-title">📜 Withdrawal History</h2>
+      <div class="transactions-list" id="withdrawalsList">
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/ticker.js"></script>
+  <script src="/js/withdrawal.js"></script>
+  <script src="/js/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - MineProfit</title>
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#f4c430">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2991/2991148.png">
+  <style>
+    #pwaInstallBtn {
+      display: none;
+      background: linear-gradient(135deg, #f4c430, #e94560);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 50px;
+      font-weight: 700;
+      margin: 20px auto;
+      box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3);
+      cursor: pointer;
+      width: fit-content;
+      align-items: center;
+      gap: 10px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    .ios-install-hint {
+      display: none;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 15px;
+      border-radius: 12px;
+      margin: 20px 0;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Ticker Banner -->
+  <div class="ticker-bar">
+    <div class="ticker-track" id="tickerTrack"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-brand">⛏️ MineProfit</div>
+    <div class="nav-links">
+      <a href="/dashboard.html" class="active">Dashboard</a>
+      <a href="/shop.html">Shop</a>
+      <a href="/spin.html">🎰 Spin</a>
+      <a href="/games.html">🎮 Games</a>
+      <a href="/profile.html">Profile</a>
+      <a href="/payment.html">Deposit</a>
+      <a href="/withdrawal.html">💸 Withdraw</a>
+      <a href="/contact.html">📞 Help</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Welcome Banner -->
+    <div class="welcome-banner">
+      <h1>Welcome back, <span id="username">Miner</span>! 👋</h1>
+      <p>Member since <span id="memberSince"></span></p>
+    </div>
+
+    <!-- PWA Install Section -->
+    <div id="pwaContainer">
+      <button id="pwaInstallBtn">📲 Install App to Home Screen</button>
+      <div id="iosInstallHint" class="ios-install-hint">
+        <p>📱 To install on iPhone: Tap <b>Share</b> (square with arrow) and select <b>Add to Home Screen</b>.</p>
+      </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card balance-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-info">
+          <div class="stat-label">Total Balance</div>
+          <div class="stat-value" id="balance">₹0.00</div>
+        </div>
+      </div>
+
+      <div class="stat-card earning-card">
+        <div class="stat-icon">📈</div>
+        <div class="stat-info">
+          <div class="stat-label">Earning Rate</div>
+          <div class="stat-value" id="earningRate">₹0/hr</div>
+        </div>
+      </div>
+
+      <div class="stat-card uncollected-card">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-info">
+          <div class="stat-label">Uncollected</div>
+          <div class="stat-value" id="uncollected">₹0.00</div>
+        </div>
+        <button class="btn btn-collect" id="collectBtn" onclick="collectEarnings()">Collect</button>
+      </div>
+
+      <div class="stat-card machines-card">
+        <div class="stat-icon">⚙️</div>
+        <div class="stat-info">
+          <div class="stat-label">Active Machines</div>
+          <div class="stat-value" id="totalMachines">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Promotions & Boosters -->
+    <div class="section">
+      <h2 class="section-title">🎁 Promotions & Boosters</h2>
+      <div id="boostersBox" class="admin-item-card" style="display:none;">
+        <div class="admin-item-header">Active Boosters</div>
+        <div id="boostersList"></div>
+      </div>
+      <div id="promotionsBox" class="admin-item-card" style="display:none;margin-top:12px;">
+        <div class="admin-item-header">Messages</div>
+        <div id="promotionsList"></div>
+      </div>
+    </div>
+
+    <!-- My Machines -->
+    <div class="section">
+      <h2 class="section-title">⚙️ My Machines</h2>
+      <div class="machines-list" id="machinesList">
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Referral Section -->
+    <div class="section">
+      <h2 class="section-title">👥 Referral Program</h2>
+
+      <div class="referral-code-box">
+        <div class="referral-label">Your Referral Code</div>
+        <div class="referral-code-display">
+          <span id="referralCode">--------</span>
+          <button class="btn btn-copy" onclick="copyReferralCode()">📋 Copy</button>
+        </div>
+        <div class="referral-link" id="referralLink"></div>
+        <p class="referral-info">Share this code to earn commissions: L1: 5% | L2: 3% | L3: 1.5%</p>
+      </div>
+
+      <!-- Referral Tree -->
+      <div class="referral-tree">
+        <div class="referral-level">
+          <div class="level-header level-1">
+            <span class="level-badge">Level 1</span>
+            <span class="level-label">Direct Referrals</span>
+            <span class="level-count" id="level1Count">0</span>
+          </div>
+          <div class="level-users" id="level1Users"></div>
+        </div>
+
+        <div class="referral-level">
+          <div class="level-header level-2">
+            <span class="level-badge">Level 2</span>
+            <span class="level-label">Indirect Referrals</span>
+            <span class="level-count" id="level2Count">0</span>
+          </div>
+          <div class="level-users" id="level2Users"></div>
+        </div>
+
+        <div class="referral-level">
+          <div class="level-header level-3">
+            <span class="level-badge">Level 3</span>
+            <span class="level-label">Extended Network</span>
+            <span class="level-count" id="level3Count">0</span>
+          </div>
+          <div class="level-users" id="level3Users"></div>
+        </div>
+      </div>
+
+      <div class="referral-summary">
+        <div class="ref-stat">
+          <span class="ref-stat-label">Total Referrals</span>
+          <span class="ref-stat-value" id="totalReferrals">0</span>
+        </div>
+        <div class="ref-stat">
+          <span class="ref-stat-label">Referral Earnings</span>
+          <span class="ref-stat-value" id="referralEarnings">₹0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="section">
+      <h2 class="section-title">📜 Recent Transactions</h2>
+      <div class="transactions-list" id="transactionsList">
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/ticker.js"></script>
+  <script src="/js/dashboard.js"></script>
+  <script src="/js/nav.js"></script>
+  <script>
+    // PWA Logic
+    let deferredPrompt;
+    const installBtn = document.getElementById('pwaInstallBtn');
+    const iosHint = document.getElementById('iosInstallHint');
+
+    // Check if iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+
+    if (isIOS && !isStandalone) {
+      iosHint.style.display = 'block';
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.style.display = 'flex';
+    });
+
+    installBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          installBtn.style.display = 'none';
+        }
+        deferredPrompt = null;
+      }
+    });
+
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js');
+      });
+    }
+  </script>
+</body>
+</html>

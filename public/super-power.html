@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Power - Multi-Business Management</title>
+    <style>
+        :root {
+            --bg: #020617;
+            --card: #1e293b;
+            --accent: #10b981; /* MineProfit Emerald */
+            --text: #f8fafc;
+            --border: rgba(255, 255, 255, 0.1);
+            --danger: #ef4444;
+            --success: #10b981;
+            --gold: #f59e0b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui; }
+        body { background: var(--bg); color: var(--text); padding: 40px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+        .header h1 { font-size: 1.8rem; color: var(--accent); letter-spacing: 2px; display: flex; align-items: center; gap: 15px; }
+        .header h1 span { font-size: 0.8rem; background: var(--accent); color: white; padding: 4px 10px; border-radius: 6px; letter-spacing: 0; }
+        .btn-logout { background: var(--danger); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 700; }
+
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; max-width: 1400px; margin: 0 auto; }
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        h2 { font-size: 1.2rem; margin-bottom: 20px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Form Styling */
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .input-group label { display: block; font-size: 0.75rem; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; }
+        input, select { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: white; padding: 12px; border-radius: 10px; outline: none; }
+        .btn-action { background: var(--accent); color: #000; border: none; padding: 12px; border-radius: 10px; font-weight: 800; cursor: pointer; width: 100%; text-transform: uppercase; }
+
+        /* List Styling */
+        .list { margin-top: 20px; }
+        .item { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; transition: 0.2s; }
+        .item:hover { border-color: var(--accent); }
+        .item-info h4 { font-size: 1rem; margin-bottom: 4px; }
+        .item-info p { font-size: 0.8rem; color: #94a3b8; }
+        .badge { font-size: 0.7rem; font-weight: 800; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; margin-left: 8px; }
+        .badge-business { background: rgba(245, 158, 11, 0.1); color: var(--accent); }
+        .badge-admin { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+
+        .btn-delete { color: var(--danger); cursor: pointer; background: none; border: none; font-weight: bold; }
+        .assignment-controls { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+        /* Performance Table */
+        .perf-card { grid-column: span 2; }
+        .perf-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .perf-table th { text-align: left; font-size: 0.75rem; color: #94a3b8; padding: 12px; border-bottom: 1px solid var(--border); text-transform: uppercase; }
+        .perf-table td { padding: 15px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
+        .status-online { color: var(--success); font-weight: 800; display: flex; align-items: center; gap: 5px; }
+        .status-online::before { content: ''; width: 8px; height: 8px; background: var(--success); border-radius: 50%; display: inline-block; box-shadow: 0 0 10px var(--success); }
+
+        /* Summary Cards */
+        .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; max-width: 1400px; margin-left: auto; margin-right: auto; }
+        .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 5px; }
+        .stat-label { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-value { font-size: 1.8rem; font-weight: 900; color: var(--text); }
+        .stat-value.accent { color: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⛏️ MINEPROFIT <span>SUPER SUITE</span></h1>
+        <button class="btn-logout" onclick="logout()">LOGOUT MASTER</button>
+    </div>
+
+    <div class="summary-grid">
+        <div class="stat-card">
+            <div class="stat-label">Total Master Admins</div>
+            <div class="stat-value" id="stat-admins">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total Sites</div>
+            <div class="stat-value" id="stat-sites">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total Users</div>
+            <div class="stat-value accent" id="stat-users">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total Revenue</div>
+            <div class="stat-value" style="color:var(--gold)" id="stat-rev">₹0</div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Performance Monitor -->
+        <div class="panel perf-card">
+            <h2>Master Admin Performance Monitor</h2>
+            <table class="perf-table">
+                <thead>
+                    <tr>
+                        <th>Master Admin</th>
+                        <th>Current Site</th>
+                        <th>Total Users</th>
+                        <th>Total Revenue</th>
+                        <th>Pending Payouts</th>
+                        <th>Last Active</th>
+                    </tr>
+                </thead>
+                <tbody id="perf-list">
+                    <!-- Performance data here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Business Site Management -->
+        <div class="panel">
+            <h2>Manage Business Sites</h2>
+            <div class="form-row">
+                <div class="input-group">
+                    <label>Business Name</label>
+                    <input type="text" id="biz-name" placeholder="e.g. BTC Miner">
+                </div>
+                <div class="input-group">
+                    <label>Unique ID</label>
+                    <input type="text" id="biz-id" placeholder="e.g. btc-miner">
+                </div>
+            </div>
+            <button class="btn-action" onclick="addBusiness()">Add Business Site</button>
+            
+            <div class="list" id="biz-list">
+                <!-- Businesses here -->
+            </div>
+        </div>
+
+        <!-- Admin Access Management -->
+        <div class="panel">
+            <h2>Master Admin Management</h2>
+            <div class="form-row" style="margin-bottom:10px;">
+                <div class="input-group">
+                    <label>New Master Admin User</label>
+                    <input type="text" id="admin-user-new" placeholder="Enter admin login">
+                </div>
+                <div class="input-group">
+                    <label>Default Password</label>
+                    <input type="text" id="admin-pass-new" placeholder="123456">
+                </div>
+            </div>
+            <button class="btn-action" style="background:var(--success); color:white; margin-bottom:20px;" onclick="createAdmin()">Create New Master Admin Account</button>
+
+            <div class="assignment-controls">
+                <label style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:10px; text-transform:uppercase;">Grant Site Access</label>
+                <div class="form-row" style="grid-template-columns: 1fr 1fr 1fr;">
+                    <select id="admin-select">
+                        <option value="">Select Master Admin...</option>
+                    </select>
+                    <select id="biz-select">
+                        <option value="">Select Site...</option>
+                    </select>
+                    <button class="btn-action" style="background:var(--accent); color:#000;" onclick="assignAccess()">GRANT</button>
+                </div>
+            </div>
+
+            <div class="list" id="admin-list">
+                <!-- Admins here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check Auth
+        if (localStorage.getItem('super_token') !== 'MASTER_SECRET_KEY_2026') {
+            window.location.href = '/super-admin-login.html';
+        }
+
+        async function addBusiness() {
+            const name = document.getElementById('biz-name').value;
+            const id = document.getElementById('biz-id').value;
+            if(!name || !id) return;
+            
+            try {
+                const res = await fetch('/api/super/business/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, id })
+                });
+                if (res.ok) {
+                    render();
+                    document.getElementById('biz-name').value = '';
+                    document.getElementById('biz-id').value = '';
+                } else {
+                    alert('ID already exists');
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function createAdmin() {
+            const username = document.getElementById('admin-user-new').value;
+            const password = document.getElementById('admin-pass-new').value;
+            if(!username || !password) return alert('Username and password required');
+            
+            try {
+                const res = await fetch('/api/super/admin/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                if (res.ok) {
+                    render();
+                    document.getElementById('admin-user-new').value = '';
+                    document.getElementById('admin-pass-new').value = '';
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Failed to create admin');
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function assignAccess() {
+            const admin_username = document.getElementById('admin-select').value;
+            const business_id = document.getElementById('biz-select').value;
+            if(!admin_username || !business_id) return alert('Select admin and business');
+            
+            try {
+                const res = await fetch('/api/super/access/grant', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_username, business_id })
+                });
+                if (res.ok) {
+                    // Automatically set as running if it's the first one
+                    await setRunning(admin_username, business_id);
+                    render();
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function setRunning(admin_username, business_id) {
+            try {
+                const res = await fetch('/api/super/access/set-running', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_username, business_id })
+                });
+                if (res.ok) {
+                    alert(`Site ${business_id} is now RUNNING for ${admin_username}`);
+                    render();
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function removeBiz(id) {
+            if(!confirm('Are you sure? This will delete the business site.')) return;
+            try {
+                const res = await fetch(`/api/super/business/${id}`, { method: 'DELETE' });
+                if (res.ok) render();
+            } catch (err) { console.error(err); }
+        }
+
+        async function removeAdmin(username) {
+            if(!confirm(`⚠️ CRITICAL: Are you sure you want to PERMANENTLY DELETE the admin account "@${username}"? This action cannot be undone.`)) return;
+            try {
+                const res = await fetch(`/api/super/admin/${username}`, { method: 'DELETE' });
+                if (res.ok) {
+                    alert(`Admin account @${username} has been deleted.`);
+                    render();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Failed to delete admin');
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function render() {
+            const bizList = document.getElementById('biz-list');
+            const adminList = document.getElementById('admin-list');
+            const bizSelect = document.getElementById('biz-select');
+            const adminSelect = document.getElementById('admin-select');
+            const perfList = document.getElementById('perf-list');
+
+            // Summary Elements
+            const sAdmins = document.getElementById('stat-admins');
+            const sSites = document.getElementById('stat-sites');
+            const sUsers = document.getElementById('stat-users');
+            const sRev = document.getElementById('stat-rev');
+
+            try {
+                // Fetch Main Data
+                const res = await fetch('/api/super/data');
+                const data = await res.json();
+
+                // Fetch Performance Data
+                const perfRes = await fetch('/api/super/performance');
+                const perfData = await perfRes.json();
+
+                // Update Summary Cards from Platform Totals
+                sAdmins.textContent = perfData.platformTotals.totalAdmins;
+                sSites.textContent = perfData.platformTotals.totalSites;
+                sUsers.textContent = perfData.platformTotals.totalUsers.toLocaleString();
+                sRev.textContent = `₹${perfData.platformTotals.totalRevenue.toLocaleString()}`;
+
+                bizList.innerHTML = data.businesses.map(b => `
+                    <div class="item">
+                        <div class="item-info">
+                            <h4>${b.name} <span class="badge badge-business">${b.id}</span></h4>
+                        </div>
+                        <button class="btn-delete" onclick="removeBiz('${b.id}')">✕</button>
+                    </div>
+                `).join('');
+
+                adminList.innerHTML = data.admins.map(a => `
+                    <div class="item" id="admin-item-${a.user.toLowerCase()}">
+                        <div class="item-info">
+                            <h4>${a.name} <span class="badge badge-admin">MASTER</span> (@${a.user})</h4>
+                            <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:8px;">
+                                ${a.access.map(accessObj => {
+                                    const biz = data.businesses.find(b => b.id === accessObj.id);
+                                    const isRunning = accessObj.is_running;
+                                    return `
+                                        <button class="badge badge-business" 
+                                                style="cursor:pointer; border:${isRunning ? '2px solid var(--accent)' : 'none'}; opacity:${isRunning ? '1' : '0.6'};" 
+                                                onclick="setRunning('${a.user}', '${accessObj.id}')" 
+                                                title="${isRunning ? 'Currently Running' : 'Click to set as Running'}">
+                                            ${biz ? biz.name : accessObj.id} ${isRunning ? '✔' : ''}
+                                        </button>`;
+                                }).join('')}
+                            </div>
+                        </div>
+                        <button class="btn-delete" onclick="removeAdmin('${a.user}')" title="Delete Admin Account">✕</button>
+                    </div>
+                `).join('');
+
+                bizSelect.innerHTML = '<option value="">Select Site...</option>' + 
+                    data.businesses.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+
+                adminSelect.innerHTML = '<option value="">Select Admin...</option>' + 
+                    data.admins.map(a => `<option value="${a.user}">${a.name}</option>`).join('');
+
+                // Render Performance Monitor
+                perfList.innerHTML = perfData.stats.map(s => {
+                    const lastActive = s.last_active ? new Date(s.last_active).toLocaleString() : 'Never';
+                    const isOnline = s.last_active && (Date.now() - new Date(s.last_active).getTime() < 300000); // Online if active in last 5 mins
+                    
+                    return `
+                        <tr>
+                            <td style="font-weight:700;">@${s.username}</td>
+                            <td><span class="badge badge-business">${s.site}</span></td>
+                            <td style="font-weight:800; color:var(--accent);">${s.users}</td>
+                            <td style="color:var(--success); font-weight:800;">₹${s.revenue.toLocaleString()}</td>
+                            <td style="color:var(--danger); font-weight:800;">₹${s.withdrawals.toLocaleString()}</td>
+                            <td>
+                                ${isOnline ? '<span class="status-online">ONLINE</span>' : `<span style="color:#64748b;">${lastActive}</span>`}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+            } catch (err) { console.error(err); }
+        }
+
+        function logout() {
+            localStorage.removeItem('super_token');
+            window.location.href = '/super-admin-login.html';
+        }
+
+        render();
+        // Auto-refresh performance every 30 seconds
+        setInterval(render, 30000);
+    </script>
+</body>
+</html>
