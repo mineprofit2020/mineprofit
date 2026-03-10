@@ -2,16 +2,11 @@ services:
   - type: web
     name: mineprofit-backend
     env: node
-    plan: free
     autoDeploy: true
     buildCommand: npm install
     startCommand: node server.js
-    disk:
-      name: data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: DB_PATH
-        value: /var/data/mining.db
+        value: /tmp/mining.db
       - key: SESSION_SECRET
         generateValue: true
