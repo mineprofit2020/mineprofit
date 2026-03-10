@@ -24,7 +24,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(session({
-  secret: 'mining-app-secret-key-change-in-production',
+  secret: process.env.SESSION_SECRET || 'mining-app-secret-key-change-in-production',
   resave: false,
   saveUninitialized: false,
   cookie: {
