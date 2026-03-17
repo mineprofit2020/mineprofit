@@ -1,3 +1,9 @@
+// Safe Number Formatting helper
+function fNum(val, decimals = 2) {
+  const num = Number(val);
+  return isNaN(num) ? (0).toFixed(decimals) : num.toFixed(decimals);
+}
+
 function formatDate(dateStr) {
   if (!dateStr) return 'N/A';
   const d = new Date(dateStr + (dateStr.endsWith('Z') ? '' : 'Z'));
@@ -280,10 +286,11 @@ function showCreateUserModal() {
 function closeCreateUserModal() {
   document.getElementById('modal-createuser').style.display = 'none';
 }
-window.onclick = function(event) {
+// Handle clicking outside of modal to close
+window.addEventListener('click', (event) => {
   const modal = document.getElementById('modal-createuser');
   if (event.target == modal) modal.style.display = "none";
-}
+});
 
 // Overview
 async function loadOverview() {
@@ -292,12 +299,12 @@ async function loadOverview() {
     const d = await res.json();
     document.getElementById('adminStats').innerHTML = `
       <div class="stat-card balance-card"><div class="stat-icon">👥</div><div class="stat-info"><div class="stat-label">Total Users</div><div class="stat-value">${d.totalUsers}</div></div></div>
-      <div class="stat-card earning-card"><div class="stat-icon">💰</div><div class="stat-info"><div class="stat-label">Total Balance</div><div class="stat-value">₹${d.totalBalance}</div></div></div>
+      <div class="stat-card earning-card"><div class="stat-icon">💰</div><div class="stat-info"><div class="stat-label">Total Balance</div><div class="stat-value">₹${fNum(d.totalBalance)}</div></div></div>
       <div class="stat-card uncollected-card"><div class="stat-icon">⚙️</div><div class="stat-info"><div class="stat-label">Total Machines</div><div class="stat-value">${d.totalMachines}</div></div></div>
-      <div class="stat-card machines-card"><div class="stat-icon">💸</div><div class="stat-info"><div class="stat-label">Total Withdrawn</div><div class="stat-value">₹${d.totalWithdrawals}</div></div></div>
+      <div class="stat-card machines-card"><div class="stat-icon">💸</div><div class="stat-info"><div class="stat-label">Total Withdrawn</div><div class="stat-value">₹${fNum(d.totalWithdrawals)}</div></div></div>
       <div class="stat-card balance-card"><div class="stat-icon">⏳</div><div class="stat-info"><div class="stat-label">Pending Withdrawals</div><div class="stat-value">${d.pendingWithdrawals}</div></div></div>
       <div class="stat-card earning-card"><div class="stat-icon">💳</div><div class="stat-info"><div class="stat-label">Pending Payments</div><div class="stat-value">${d.pendingPayments}</div></div></div>
-      <div class="stat-card uncollected-card"><div class="stat-icon">📥</div><div class="stat-info"><div class="stat-label">Total Deposits</div><div class="stat-value">₹${d.totalDeposits}</div></div></div>
+      <div class="stat-card uncollected-card"><div class="stat-icon">📥</div><div class="stat-info"><div class="stat-label">Total Deposits</div><div class="stat-value">₹${fNum(d.totalDeposits)}</div></div></div>
       <div class="stat-card machines-card"><div class="stat-icon">📨</div><div class="stat-info"><div class="stat-label">Unread Messages</div><div class="stat-value">${d.unreadMessages}</div></div></div>
     `;
   } catch (err) { console.error('Overview error:', err); }
@@ -421,7 +428,7 @@ async function loadUsers() {
             <div class="user-stats-grid">
               <div class="stat-item">
                 <span class="stat-label">Wallet Balance</span>
-                <span class="stat-value" style="color:#10b981;">💰 ₹${u.balance.toFixed(2)}</span>
+                <span class="stat-value" style="color:#10b981;">💰 ₹${fNum(u.balance)}</span>
               </div>
               <div class="stat-item">
                 <span class="stat-label">Active Machines</span>
@@ -437,11 +444,11 @@ async function loadUsers() {
               </div>
               <div class="stat-item">
                 <span class="stat-label">Total Deposited</span>
-                <span class="stat-value">📥 ₹${u.total_deposited || 0}</span>
+                <span class="stat-value">📥 ₹${fNum(u.total_deposited)}</span>
               </div>
               <div class="stat-item">
                 <span class="stat-label">Total Won</span>
-                <span class="stat-value">🏆 ₹${u.total_won || 0}</span>
+                <span class="stat-value">🏆 ₹${fNum(u.total_won)}</span>
               </div>
             </div>
 
@@ -636,7 +643,7 @@ async function loadWithdrawals() {
               <div class="user-header">
                 <div style="font-size:1.5rem;">💸</div>
                 <div>
-                  <div class="user-name">₹${w.amount.toFixed(2)} <span style="font-weight:400;color:var(--text-secondary);">via ${w.method.toUpperCase()}</span></div>
+                  <div class="user-name">₹${fNum(w.amount)} <span style="font-weight:400;color:var(--text-secondary);">via ${w.method.toUpperCase()}</span></div>
                   <div class="user-email">${w.username} (${w.email})</div>
                 </div>
                 <div style="margin-left:auto; text-align:right;">
@@ -703,7 +710,7 @@ async function loadPayments() {
               <div class="user-header">
                 <div style="font-size:1.5rem;">💳</div>
                 <div>
-                  <div class="user-name">₹${p.amount.toFixed(2)} <span style="font-weight:400;color:var(--text-secondary);">via ${p.method.toUpperCase()}</span></div>
+                  <div class="user-name">₹${fNum(p.amount)} <span style="font-weight:400;color:var(--text-secondary);">via ${p.method.toUpperCase()}</span></div>
                   <div class="user-email">${p.username} (${p.email})</div>
                 </div>
                 <div style="margin-left:auto; text-align:right;">
@@ -1060,9 +1067,9 @@ async function loadGameHistory() {
             <td style="white-space:nowrap; font-size:0.8rem;">${date}</td>
             <td style="font-weight:700;">${h.username}</td>
             <td>${gameIcon} ${h.game_type.replace('_', ' ').toUpperCase()}</td>
-            <td style="font-weight:700;">₹${h.bet_amount}</td>
+            <td style="font-weight:700;">₹${fNum(h.bet_amount)}</td>
             <td><span class="status-pill" style="background:rgba(255,255,255,0.05); color:${isWin ? '#10b981' : '#94a3b8'};">${h.multiplier}x</span></td>
-            <td style="color:${payoutColor}; font-weight:800;">₹${h.payout.toFixed(2)}</td>
+            <td style="color:${payoutColor}; font-weight:800;">₹${fNum(h.payout)}</td>
             <td style="font-size:0.75rem; color:var(--text-muted); max-width:150px; overflow:hidden; text-overflow:ellipsis;" title='${h.details}'>${h.details}</td>
           </tr>
         `;

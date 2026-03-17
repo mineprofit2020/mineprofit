@@ -20,6 +20,11 @@ const superRoutes = require('./routes/super');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy for production (Render)
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Middleware
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
@@ -27,9 +32,12 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'mining-app-secret-key-change-in-production',
   resave: false,
   saveUninitialized: false,
+  proxy: true,
   cookie: {
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    httpOnly: true
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
   }
 }));
 

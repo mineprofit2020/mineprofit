@@ -65,7 +65,7 @@ router.post('/register', async (req, res) => {
 
     // Set session
     req.session.userId = userId;
-    req.session.username = username;
+    req.session.username = uname; // Use uname which is the trimmed/normalized version
 
     req.session.save((err) => {
       if (err) {

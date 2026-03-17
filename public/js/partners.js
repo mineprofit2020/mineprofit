@@ -5,6 +5,11 @@ function formatDate(d) {
   return date.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 }
 
+function fNum(val, decimals = 2) {
+  const num = Number(val);
+  return isNaN(num) ? (0).toFixed(decimals) : num.toFixed(decimals);
+}
+
 // Toast helper
 function showToast(msg, type = 'success') {
   const t = document.createElement('div');
@@ -104,9 +109,9 @@ async function pLoadStats() {
     const data = await res.json();
     document.getElementById('partnerStats').innerHTML = `
       <div class="stat-card"><div class="stat-icon" style="background:rgba(59,130,246,0.1); color:#3b82f6;">👥</div><div class="stat-value">${data.totalUsers}</div><div class="stat-label">Total Users</div></div>
-      <div class="stat-card"><div class="stat-icon" style="background:rgba(16,185,129,0.1); color:#10b981;">💰</div><div class="stat-value">₹${data.totalBalance.toFixed(2)}</div><div class="stat-label">User Balances</div></div>
-      <div class="stat-card"><div class="stat-icon" style="background:rgba(245,158,11,0.1); color:#f59e0b;">💳</div><div class="stat-value">₹${data.totalDeposits.toFixed(2)}</div><div class="stat-label">Total Deposits</div></div>
-      <div class="stat-card"><div class="stat-icon" style="background:rgba(239,68,68,0.1); color:#ef4444;">💸</div><div class="stat-value">₹${data.totalWithdrawals.toFixed(2)}</div><div class="stat-label">Total Withdrawals</div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:rgba(16,185,129,0.1); color:#10b981;">💰</div><div class="stat-value">₹${fNum(data.totalBalance)}</div><div class="stat-label">User Balances</div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:rgba(245,158,11,0.1); color:#f59e0b;">💳</div><div class="stat-value">₹${fNum(data.totalDeposits)}</div><div class="stat-label">Total Deposits</div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:rgba(239,68,68,0.1); color:#ef4444;">💸</div><div class="stat-value">₹${fNum(data.totalWithdrawals)}</div><div class="stat-label">Total Withdrawals</div></div>
       <div class="stat-card"><div class="stat-icon" style="background:rgba(99,102,241,0.1); color:#6366f1;">⏳</div><div class="stat-value">${data.pendingPayments}</div><div class="stat-label">Pending Deposits</div></div>
       <div class="stat-card"><div class="stat-icon" style="background:rgba(139,92,246,0.1); color:#8b5cf6;">⌛</div><div class="stat-value">${data.pendingWithdrawals}</div><div class="stat-label">Pending W/D</div></div>
     `;
@@ -135,10 +140,10 @@ async function pLoadUsers(page = 1) {
             </div>
           </div>
           <div class="user-stats-grid">
-            <div class="stat-item"><span class="stat-label">Balance</span><span class="stat-value" style="color:#10b981;">₹${u.balance.toFixed(2)}</span></div>
+            <div class="stat-item"><span class="stat-label">Balance</span><span class="stat-value" style="color:#10b981;">₹${fNum(u.balance)}</span></div>
             <div class="stat-item"><span class="stat-label">Machines</span><span class="stat-value">${u.machine_count}</span></div>
-            <div class="stat-item"><span class="stat-label">Deposited</span><span class="stat-value">₹${u.total_deposited.toFixed(2)}</span></div>
-            <div class="stat-item"><span class="stat-label">Won</span><span class="stat-value">₹${u.total_won.toFixed(2)}</span></div>
+            <div class="stat-item"><span class="stat-label">Deposited</span><span class="stat-value">₹${fNum(u.total_deposited)}</span></div>
+            <div class="stat-item"><span class="stat-label">Won</span><span class="stat-value">₹${fNum(u.total_won)}</span></div>
           </div>
           <div class="control-section" style="display:flex; gap:8px; flex-wrap:wrap; background:rgba(255,255,255,0.02);">
             ${currentPartner.can_controls ? `

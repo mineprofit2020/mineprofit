@@ -6,14 +6,14 @@ function requirePartner(req, res, next) {
 }
 
 function requirePartnerPermission(permission) {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     if (!req.session || !req.session.partnerId) {
       return res.status(401).json({ error: 'Partner login required' });
     }
     
     const { getDb } = require('../db');
     const db = getDb();
-    const partner = db.prepare('SELECT * FROM partners WHERE id = ?').get(req.session.partnerId);
+    const partner = await db.prepare('SELECT * FROM partners WHERE id = ?').get(req.session.partnerId);
     
     if (!partner || !partner.active) {
       return res.status(403).json({ error: 'Partner account inactive' });

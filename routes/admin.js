@@ -264,7 +264,7 @@ router.get('/users', requireAdmin, async (req, res) => {
     const sortOrder = req.query.sortOrder === 'ASC' ? 'ASC' : 'DESC';
 
     // Allowed sort columns to prevent injection
-    const allowedSorts = ['created_at', 'balance', 'total_deposited', 'total_won', 'referral_count'];
+    const allowedSorts = ['created_at', 'balance', 'total_deposited', 'total_mining', 'total_referral', 'total_won', 'referral_count'];
     const sortCol = allowedSorts.includes(sortBy) ? sortBy : 'created_at';
 
     const sql = `
@@ -274,7 +274,9 @@ router.get('/users', requireAdmin, async (req, res) => {
         (SELECT COUNT(*) FROM user_machines WHERE user_id = u.id) as machine_count,
         (SELECT COUNT(*) FROM users WHERE referred_by_user_id = u.id) as referral_count,
         (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE user_id = u.id AND status = 'approved') as total_deposited,
-        (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = u.id AND type IN ('game_win', 'spin_win')) as total_won
+        (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = u.id AND type = 'mining') as total_mining,
+        (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = u.id AND type = 'referral') as total_referral,
+        (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = u.id AND type IN ('game_win', 'spin_win', 'bonus')) as total_won
       FROM users u
       WHERE (u.username LIKE ? OR u.email LIKE ?)
       ORDER BY ${sortCol} ${sortOrder}

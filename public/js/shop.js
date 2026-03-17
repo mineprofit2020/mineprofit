@@ -10,6 +10,12 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.remove(), 3000);
 }
 
+// Utility: Safe Number Formatting
+function fNum(val, decimals = 2) {
+  const num = Number(val);
+  return isNaN(num) ? (0).toFixed(decimals) : num.toFixed(decimals);
+}
+
 // Check auth
 async function checkAuth() {
   try {
@@ -37,7 +43,7 @@ async function loadMachines() {
       return;
     }
 
-    document.getElementById('shopBalance').textContent = `₹${data.balance.toFixed(2)}`;
+    document.getElementById('shopBalance').textContent = `₹${fNum(data.balance)}`;
 
     const grid = document.getElementById('shopGrid');
     grid.innerHTML = data.machines.map(m => {

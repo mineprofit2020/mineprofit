@@ -112,25 +112,21 @@ function initTicker() {
   const tickerTrack = document.getElementById('tickerTrack');
   if (!tickerTrack) return;
 
-  // Generate 15 notifications for a smooth loop
-  const notifications = [];
-  for (let i = 0; i < 15; i++) {
-    notifications.push(generateNotification());
+  // Function to build and set innerHTML
+  function updateTicker() {
+    const notifications = [];
+    for (let i = 0; i < 15; i++) {
+      notifications.push(generateNotification());
+    }
+    const html = notifications.map(n => `<span class="ticker-item">${n}</span>`).join('');
+    tickerTrack.innerHTML = html + html;
   }
 
-  // Double them for seamless looping
-  const html = notifications.map(n => `<span class="ticker-item">${n}</span>`).join('');
-  tickerTrack.innerHTML = html + html;
+  // Initial load
+  updateTicker();
 
-  // Refresh notifications every 60 seconds
-  setInterval(() => {
-    const fresh = [];
-    for (let i = 0; i < 15; i++) {
-      fresh.push(generateNotification());
-    }
-    const newHtml = fresh.map(n => `<span class="ticker-item">${n}</span>`).join('');
-    tickerTrack.innerHTML = newHtml + newHtml;
-  }, 60000);
+  // Refresh notifications every 10 seconds for more activity
+  setInterval(updateTicker, 10000);
 }
 
 // Auto-init

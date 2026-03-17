@@ -8,6 +8,11 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.remove(), 3000);
 }
 
+function fNum(val, decimals = 2) {
+  const num = Number(val);
+  return isNaN(num) ? (0).toFixed(decimals) : num.toFixed(decimals);
+}
+
 function formatDate(dateStr) {
   const d = new Date(dateStr + (dateStr.endsWith('Z') ? '' : 'Z'));
   return d.toLocaleString('en-IN', {
@@ -38,7 +43,7 @@ async function loadProfile() {
 
     if (res.status === 401) { window.location.href = '/login.html'; return; }
 
-    document.getElementById('withdrawBalance').textContent = `₹${data.user.balance.toFixed(2)}`;
+    document.getElementById('withdrawBalance').textContent = `₹${fNum(data.user.balance)}`;
 
     if (data.profile) {
       const p = data.profile;

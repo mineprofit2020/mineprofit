@@ -32,7 +32,12 @@ router.post('/ack', requireAuth, async (req, res) => {
     const userId = req.session.userId;
     const { notification_id } = req.body;
     if (!notification_id) return res.status(400).json({ error: 'notification_id required' });
-    await db.prepare(`INSERT INTO notification_acks (notification_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING`).run(notification_id, userId);
+    
+    // Check if it's already acked
+    const existing = await db.prepare('SELECT 1 FROM notification_acks WHERE notification_id = ? AND user_id = ?').get(notification_id, userId);
+    if (!existing) {
+      await db.prepare(`INSERT INTO notification_acks (notification_id, user_id) VALUES (?, ?)`).run(notification_id, userId);
+    }
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });

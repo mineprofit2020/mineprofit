@@ -251,8 +251,9 @@ a:hover {
   right: 0;
   background: var(--bg-secondary);
   border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
   z-index: 200;
-  padding: 6px 0 env(safe-area-inset-bottom, 6px);
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
 }
 .bottom-nav-inner {
   display: flex;
@@ -361,7 +362,7 @@ a:hover {
 /* ===== STATS GRID ===== */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 20px;
   margin-bottom: 32px;
 }
@@ -2262,7 +2263,20 @@ textarea:focus {
   .bottom-nav { display: block; }
 
   /* Body padding for bottom bar */
-  body:not(.auth-page) { padding-bottom: 68px; }
+  body:not(.auth-page) { padding-bottom: 74px; }
+
+  /* Tab items spacing */
+  .bottom-nav-inner a {
+    font-size: 0.75rem;
+    gap: 4px;
+    padding: 6px 4px;
+  }
+  .bnav-icon { font-size: 1.3rem; }
+
+  /* Better form inputs on mobile */
+  input, select, textarea {
+    font-size: 16px !important; /* Prevent iOS zoom */
+  }
 
   /* Ticker smaller */
   .ticker-bar { height: 28px; }

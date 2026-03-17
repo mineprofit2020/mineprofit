@@ -1,105 +1,264 @@
+/* Orientation and Gapping Fixes for Admin Panel */
+:root {
+  --admin-sidebar-width: 260px;
+  --admin-header-height: 64px;
+  --admin-gap: 24px;
+}
+
+/* Auth Page fix - ensure login form doesn't use sidebar layout */
+body:has(#adminLogin:not([style*="display: none"])) #adminDashboard {
+  display: block;
+}
+
+/* Base Desktop Layout (Sidebar style) */
+#adminDashboard {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+
+#adminDashboard .navbar {
+  width: var(--admin-sidebar-width);
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 32px 0;
+  border-right: 1px solid var(--border);
+  border-bottom: none;
+  background: var(--bg-secondary);
+  z-index: 1000;
+}
+
+#adminDashboard .nav-brand {
+  font-size: 1.4rem;
+  margin-bottom: 40px;
+  padding: 0 24px;
+  width: 100%;
+}
+
+#adminDashboard .nav-links {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 4px;
+}
+
+#adminDashboard .nav-links a {
+  padding: 14px 24px;
+  width: 100%;
+  border-radius: 0;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+#adminDashboard .nav-links a:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+#adminDashboard .nav-links a.active {
+  background: rgba(233, 69, 96, 0.1);
+  color: var(--accent);
+  border-left: 4px solid var(--accent);
+  padding-left: 20px;
+}
+
+#adminDashboard .nav-links a.active::after {
+  display: none; /* Hide the old underline style */
+}
+
+/* Main Content Area */
+#adminDashboard .container {
+  margin-left: var(--admin-sidebar-width);
+  width: calc(100% - var(--admin-sidebar-width));
+  padding: 40px;
+  max-width: 1400px;
+}
+
+.admin-panel {
+  animation: fadeIn 0.3s ease;
+  width: 100%;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Stats Grid Gapping */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--admin-gap);
+  margin-bottom: 32px;
+}
+
+/* Settings Grid Gapping */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--admin-gap);
+}
+
+.setting-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 24px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.setting-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
 
 /* Mobile Optimization for Admin Panel */
-@media (max-width: 768px) {
-  /* Hide desktop sidebar */
-  .navbar {
-    display: none !important;
+@media (max-width: 1024px) {
+  #adminDashboard {
+    flex-direction: column;
+  }
+
+  #adminDashboard .navbar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    padding: 16px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  #adminDashboard .nav-brand {
+    margin-bottom: 0;
+    padding: 0;
+    width: auto;
+  }
+
+  #adminDashboard .nav-links {
+    display: none !important; /* Hide desktop links */
+  }
+
+  #adminDashboard .container {
+    margin-left: 0;
+    width: 100%;
+    padding: 20px;
   }
 
   /* Show mobile navigation */
   .admin-nav-mobile {
     display: flex !important;
     overflow-x: auto;
-    background: var(--bg-card);
+    background: var(--bg-secondary);
     border-bottom: 1px solid var(--border);
     padding: 0 16px;
-    gap: 20px;
+    gap: 8px;
     position: sticky;
     top: 0;
     z-index: 999;
     white-space: nowrap;
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling */
-    scrollbar-width: none; /* Hide scrollbar Firefox */
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   }
   
   .admin-nav-mobile::-webkit-scrollbar {
-    display: none; /* Hide scrollbar Chrome/Safari */
+    display: none;
   }
 
   .admin-nav-mobile a {
     display: inline-flex;
     align-items: center;
-    height: 50px;
-    padding: 0 4px;
+    height: 48px;
+    padding: 0 16px;
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 600;
     border-bottom: 3px solid transparent;
     transition: all 0.2s;
     text-decoration: none;
-    opacity: 0.7;
   }
 
   .admin-nav-mobile a.active {
-    color: var(--gold);
-    border-bottom-color: var(--gold);
-    opacity: 1;
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    background: rgba(233, 69, 96, 0.05);
   }
 
-  /* Adjust main container padding */
-  .container {
-    padding: 16px;
-    max-width: 100%;
-    margin: 0;
-  }
-
-  .admin-panel {
-    padding: 0; /* Remove extra padding on mobile */
-    background: transparent;
-  }
-
-  /* Cards */
-  .admin-item-card, .setting-card, .user-card, .sub-panel .admin-item-card {
-    padding: 16px;
-    margin-bottom: 16px;
-    border-radius: 16px; /* Softer corners */
-    border: 1px solid var(--border);
-    background: var(--bg-card);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  }
-  
-  /* Settings Grid as List */
-  .settings-grid {
-    display: flex;
-    flex-direction: column;
+  /* Stats Grid on Mobile */
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
     gap: 12px;
   }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
   
-  .setting-card {
-    min-height: auto; /* Remove fixed height */
-    flex-direction: row; /* Horizontal layout for settings */
-    text-align: left;
-    justify-content: flex-start;
-    gap: 16px;
-    align-items: center;
-    padding: 12px 16px;
+  .settings-grid {
+    grid-template-columns: 1fr;
   }
 
-  .setting-icon {
-    width: 48px;
-    height: 48px;
-    font-size: 1.5rem;
-    margin-bottom: 0;
-    flex-shrink: 0;
-    border-radius: 12px; /* App-icon style */
-    background: rgba(255, 255, 255, 0.05);
+  .container {
+    padding: 12px;
+  }
+}
+
+/* User Card and List Improvements */
+.user-card, .admin-item-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.user-header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  margin-bottom: 4px;
+}
+
+/* Responsive Tables / Lists */
+@media (max-width: 600px) {
+  .user-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
   }
   
-  .setting-card h3 {
-    font-size: 1rem;
-    margin-bottom: 2px;
+  .btn-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
+  
+  .btn-admin {
+    width: 100%;
+    padding: 0 8px;
+    font-size: 0.8rem;
+  }
+}
+
   
   .setting-card p {
     font-size: 0.8rem;

@@ -10,6 +10,12 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.remove(), 3000);
 }
 
+// Utility: Safe Number Formatting
+function fNum(val, decimals = 2) {
+  const num = Number(val);
+  return isNaN(num) ? (0).toFixed(decimals) : num.toFixed(decimals);
+}
+
 // Utility: Format date
 function formatDate(dateStr) {
   const d = new Date(dateStr + (dateStr.endsWith('Z') ? '' : 'Z'));
@@ -52,9 +58,9 @@ async function loadStats() {
     }
 
     document.getElementById('username').textContent = data.username;
-    document.getElementById('balance').textContent = `₹${data.balance.toFixed(2)}`;
-    document.getElementById('earningRate').textContent = `₹${data.totalPerHour}/hr`;
-    document.getElementById('uncollected').textContent = `₹${data.uncollectedEarnings.toFixed(2)}`;
+    document.getElementById('balance').textContent = `₹${fNum(data.balance)}`;
+    document.getElementById('earningRate').textContent = `₹${fNum(data.totalPerHour)}/hr`;
+    document.getElementById('uncollected').textContent = `₹${fNum(data.uncollectedEarnings)}`;
     document.getElementById('totalMachines').textContent = data.totalMachines;
     document.getElementById('referralCode').textContent = data.referralCode;
     document.getElementById('memberSince').textContent = formatDate(data.memberSince);
@@ -100,7 +106,7 @@ async function collectEarnings() {
     const data = await res.json();
 
     if (data.success) {
-      showToast(`Collected ₹${data.collected.toFixed(2)}!`, 'success');
+      showToast(`Collected ₹${fNum(data.collected)}!`, 'success');
       loadStats();
       loadTransactions();
     } else {
@@ -124,7 +130,7 @@ async function loadReferrals() {
     document.getElementById('level2Count').textContent = data.level2.count;
     document.getElementById('level3Count').textContent = data.level3.count;
     document.getElementById('totalReferrals').textContent = data.totalReferrals;
-    document.getElementById('referralEarnings').textContent = `₹${data.totalReferralEarnings.toFixed(2)}`;
+    document.getElementById('referralEarnings').textContent = `₹${fNum(data.totalReferralEarnings)}`;
 
     renderLevelUsers('level1Users', data.level1.users);
     renderLevelUsers('level2Users', data.level2.users);
@@ -175,7 +181,7 @@ async function loadTransactions() {
             </div>
             <div class="tx-date">${formatDate(tx.created_at)}</div>
           </div>
-          <div class="tx-amount ${amountClass}">${amountPrefix}₹${Math.abs(tx.amount).toFixed(2)}</div>
+          <div class="tx-amount ${amountClass}">${amountPrefix}₹${fNum(Math.abs(tx.amount))}</div>
         </div>
       `;
     }).join('');
@@ -262,7 +268,7 @@ async function loadPromotions() {
             <div style="font-size:0.75rem; color:var(--text-muted);">${formatDate(n.created_at)}</div>
           </div>
           <div style="color:var(--text-secondary); font-size:0.9rem; line-height:1.5;">${n.message}</div>
-          ${(n.require_ack && !n.acked) ? `<button class="btn-link-sm" style="margin-top:12px;" onclick="ackNotification(${n.id})">Mark as Read</button>` : ''}
+          ${(n.require_ack && !n.acked) ? `<button class="btn-link-sm" style="margin-top:12px;" onclick="window.ackNotification(${n.id})">Mark as Read</button>` : ''}
         </div>
       `;
 
@@ -283,7 +289,7 @@ async function loadPromotions() {
   } catch (err) { console.error(err); }
 }
 
-async function ackNotification(id) {
+window.ackNotification = async function(id) {
   try {
     await fetch('/api/notify/ack', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -291,4 +297,4 @@ async function ackNotification(id) {
     });
     loadPromotions();
   } catch {}
-}
+};

@@ -3,9 +3,9 @@ require('dotenv').config();
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
+  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('supabase.co') ? {
     rejectUnauthorized: false
-  }
+  } : (process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false)
 });
 
 let _db = null;
@@ -21,7 +21,14 @@ class PreparedStatement {
   // Convert ? to $1, $2, etc.
   _convertSql(sql) {
     let count = 0;
-    return sql.replace(/\?/g, () => `$${++count}`);
+    // Don't replace ?? which is used for identifiers in some cases, though pg uses ""
+    // But here we just want to replace ? with $1, $2, etc.
+    return sql.replace(/\?/g, (match, offset, fullString) => {
+      // Check if it's part of ??
+      if (fullString[offset + 1] === '?') return '?'; 
+      if (fullString[offset - 1] === '?') return '?';
+      return `$${++count}`;
+    });
   }
 
   async run(...params) {
@@ -139,6 +146,12 @@ async function initDatabase() {
     )
   `);
 
+  // Initial check for business_sites
+  const sitesCount = await _db.prepare('SELECT COUNT(*) as count FROM business_sites').get();
+  if (Number(sitesCount.count) === 0) {
+    await _db.exec("INSERT INTO business_sites (id, name) VALUES ('main', 'Main Site')");
+  }
+
   await run(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -150,7 +163,7 @@ async function initDatabase() {
       free_spins INTEGER DEFAULT 1,
       referral_code TEXT UNIQUE NOT NULL,
       referred_by_user_id INTEGER,
-      business_id TEXT REFERENCES business_sites(id),
+      business_id TEXT DEFAULT 'main' REFERENCES business_sites(id),
       withdraw_blocked INTEGER DEFAULT 0,
       withdraw_limit DECIMAL,
       withdraw_limit_until TEXT,
@@ -244,7 +257,7 @@ async function initDatabase() {
       method TEXT NOT NULL,
       status TEXT DEFAULT 'pending',
       admin_note TEXT,
-      business_id TEXT REFERENCES business_sites(id),
+      business_id TEXT DEFAULT 'main' REFERENCES business_sites(id),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -267,7 +280,7 @@ async function initDatabase() {
       method TEXT NOT NULL,
       transaction_ref TEXT,
       status TEXT DEFAULT 'pending',
-      business_id TEXT REFERENCES business_sites(id),
+      business_id TEXT DEFAULT 'main' REFERENCES business_sites(id),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);

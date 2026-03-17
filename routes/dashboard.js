@@ -132,20 +132,20 @@ router.get('/referrals', requireAuth, async (req, res) => {
     const level1Ids = level1.map(u => u.id);
     let level2 = [];
     if (level1Ids.length > 0) {
-      const placeholders = level1Ids.map(() => '?').join(',');
+      const placeholders = level1Ids.map(() => '$?').join(',');
       level2 = await db.prepare(`
         SELECT id, username, created_at FROM users WHERE referred_by_user_id IN (${placeholders})
-      `).all(...level1Ids);
+      `.replace(/\$\?/g, '?')).all(...level1Ids);
     }
 
     // Level 3: Referrals of Level 2
     const level2Ids = level2.map(u => u.id);
     let level3 = [];
     if (level2Ids.length > 0) {
-      const placeholders = level2Ids.map(() => '?').join(',');
+      const placeholders = level2Ids.map(() => '$?').join(',');
       level3 = await db.prepare(`
         SELECT id, username, created_at FROM users WHERE referred_by_user_id IN (${placeholders})
-      `).all(...level2Ids);
+      `.replace(/\$\?/g, '?')).all(...level2Ids);
     }
 
     // Calculate referral earnings from transactions
