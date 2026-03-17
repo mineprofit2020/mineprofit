@@ -5,7 +5,12 @@ function showToast(message, type = 'success') {
   toast.className = `toast toast-${type}`;
   toast.textContent = message;
   document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3500);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function fNum(val, decimals = 2) {
+  const num = Number(val);
+  return isNaN(num) ? (0).toFixed(decimals) : num.toFixed(decimals);
 }
 
 function formatDate(dateStr) {
@@ -60,7 +65,7 @@ async function loadWithdrawalData() {
     if (profileRes.status === 401) { window.location.href = '/login.html'; return; }
     const profileData = await profileRes.json();
 
-    document.getElementById('withdrawBalance').textContent = `₹${profileData.user.balance.toFixed(2)}`;
+    document.getElementById('withdrawBalance').textContent = `₹${fNum(profileData.user.balance)}`;
     userProfile = profileData.profile;
 
     // Load withdrawal history
@@ -69,15 +74,11 @@ async function loadWithdrawalData() {
     const withdrawals = wData.withdrawals || [];
 
     // Compute totals
-    let totalWithdrawn = 0;
-    let pendingAmt = 0;
-    withdrawals.forEach(w => {
-      if (w.status === 'approved') totalWithdrawn += w.amount;
-      if (w.status === 'pending') pendingAmt += w.amount;
-    });
+    const totalWithdrawn = withdrawals.filter(w => w.status === 'approved').reduce((sum, w) => sum + Number(w.amount), 0);
+    const pendingAmt = withdrawals.filter(w => w.status === 'pending').reduce((sum, w) => sum + Number(w.amount), 0);
 
-    document.getElementById('totalWithdrawn').textContent = `₹${totalWithdrawn.toFixed(2)}`;
-    document.getElementById('pendingWithdrawals').textContent = `₹${pendingAmt.toFixed(2)}`;
+    document.getElementById('totalWithdrawn').textContent = `₹${fNum(totalWithdrawn)}`;
+    document.getElementById('pendingWithdrawals').textContent = `₹${fNum(pendingAmt)}`;
 
     renderWithdrawals(withdrawals);
     updateBankPreview();
@@ -129,7 +130,7 @@ function renderWithdrawals(withdrawals) {
           </div>
           <div class="tx-date">${formatDate(w.created_at)}${w.admin_note ? ` · ${w.admin_note}` : ''}</div>
         </div>
-        <div class="tx-amount negative">-₹${w.amount.toFixed(2)}</div>
+        <div class="tx-amount negative">-₹${fNum(w.amount)}</div>
       </div>
     `;
   }).join('');

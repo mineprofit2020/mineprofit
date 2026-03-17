@@ -1,8 +1,17 @@
+function fNum(val, decimals = 2) {
+  const num = Number(val);
+  return isNaN(num) ? (0).toFixed(decimals) : num.toFixed(decimals);
+}
+
+function updateBalance(d) {
+  document.getElementById('dr_balance').textContent = `₹${fNum(d.user.balance)}`;
+}
+
 async function drAuth() {
   const r = await fetch('/api/auth/me');
   const d = await r.json();
   if (!d.user) { window.location.href = '/login.html'; return null; }
-  document.getElementById('dr_balance').textContent = `₹${d.user.balance.toFixed(2)}`;
+  updateBalance(d);
   return d.user;
 }
 

@@ -8,6 +8,11 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.remove(), 3000);
 }
 
+function fNum(val, decimals = 2) {
+  const num = Number(val);
+  return isNaN(num) ? (0).toFixed(decimals) : num.toFixed(decimals);
+}
+
 function formatDate(dateStr) {
   const d = new Date(dateStr + (dateStr.endsWith('Z') ? '' : 'Z'));
   return d.toLocaleString('en-IN', {
@@ -81,7 +86,7 @@ async function initSpin() {
     // Update duplicate IDs if they exist (spinBalance/freeSpins are used in 2 places in old HTML, but we removed one set)
     // Use querySelectorAll to be safe or just standard ID which picks first
     const balEls = document.querySelectorAll('#spinBalance');
-    balEls.forEach(el => el.textContent = `₹${data.balance.toFixed(2)}`);
+    balEls.forEach(el => el.textContent = `₹${fNum(data.balance)}`);
     
     const spinEls = document.querySelectorAll('#freeSpins');
     spinEls.forEach(el => el.textContent = data.freeSpins);

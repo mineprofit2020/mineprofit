@@ -8,6 +8,11 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.remove(), 3000);
 }
 
+function fNum(val, decimals = 2) {
+  const num = Number(val);
+  return isNaN(num) ? (0).toFixed(decimals) : num.toFixed(decimals);
+}
+
 function formatDate(dateStr) {
   const d = new Date(dateStr + (dateStr.endsWith('Z') ? '' : 'Z'));
   return d.toLocaleString('en-IN', {
@@ -212,10 +217,8 @@ async function loadPaymentData() {
     const data = await res.json();
 
     if (res.status === 401) { window.location.href = '/login.html'; return; }
-
-    document.getElementById('paymentBalance').textContent = `₹${data.balance.toFixed(2)}`;
-
-    gateways = data.gateways || [];
+    document.getElementById('paymentBalance').textContent = `₹${fNum(data.balance)}`;
+    renderPayments(data.payments);  gateways = data.gateways || [];
     tokens = data.tokens || [];
     if (data.settings && data.settings.usdt_inr_rate) {
       usdtRate = parseFloat(data.settings.usdt_inr_rate) || 101;
@@ -281,7 +284,7 @@ async function loadPaymentData() {
             </div>
             <div class="tx-date">${formatDate(p.created_at)}</div>
           </div>
-          <div class="tx-amount positive">+₹${p.amount.toFixed(2)}</div>
+          <div class="tx-amount positive">+₹${fNum(p.amount)}</div>
         </div>
       `).join('');
     }
