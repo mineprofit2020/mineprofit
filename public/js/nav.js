@@ -6,28 +6,30 @@
   function isActive(page) { return currentPage === page ? 'active' : ''; }
 
   // ===== Bottom Tab Bar (5 key tabs) =====
-  const bottomNav = document.createElement('div');
-  bottomNav.className = 'bottom-nav';
-  bottomNav.innerHTML = `
-    <div class="bottom-nav-inner">
-      <a href="/dashboard.html" class="${isActive('dashboard.html')}">
-        <span class="bnav-icon">🏠</span>Home
-      </a>
-      <a href="/shop.html" class="${isActive('shop.html')}">
-        <span class="bnav-icon">🛒</span>Shop
-      </a>
-      <a href="/spin.html" class="${isActive('spin.html')}">
-        <span class="bnav-icon">🎡</span>Spin
-      </a>
-      <a href="/payment.html" class="${isActive('payment.html')}">
-        <span class="bnav-icon">💳</span>Deposit
-      </a>
-      <a href="/profile.html" class="${isActive('profile.html')}">
-        <span class="bnav-icon">👤</span>Profile
-      </a>
-    </div>
-  `;
-  document.body.appendChild(bottomNav);
+  if (!document.querySelector('.bottom-nav')) {
+    const bottomNav = document.createElement('div');
+    bottomNav.className = 'bottom-nav';
+    bottomNav.innerHTML = `
+      <div class="bottom-nav-inner">
+        <a href="/dashboard.html" class="${isActive('dashboard.html')}">
+          <span class="bnav-icon">🏠</span>Home
+        </a>
+        <a href="/shop.html" class="${isActive('shop.html')}">
+          <span class="bnav-icon">🛒</span>Shop
+        </a>
+        <a href="/spin.html" class="${isActive('spin.html')}">
+          <span class="bnav-icon">🎡</span>Spin
+        </a>
+        <a href="/payment.html" class="${isActive('payment.html')}">
+          <span class="bnav-icon">💳</span>Deposit
+        </a>
+        <a href="/profile.html" class="${isActive('profile.html')}">
+          <span class="bnav-icon">👤</span>Profile
+        </a>
+      </div>
+    `;
+    document.body.appendChild(bottomNav);
+  }
 
   // Desktop nav: ensure About Us link exists and add emojis to all links
   const navLinks = document.querySelector('.nav-links');

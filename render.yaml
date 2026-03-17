@@ -1,12 +1,16 @@
 services:
   - type: web
-    name: mineprofit-backend
+    name: mineprofit-network
     env: node
-    autoDeploy: true
+    plan: free
     buildCommand: npm install
     startCommand: node server.js
     envVars:
-      - key: DB_PATH
-        value: /tmp/mining.db
+      - key: NODE_VERSION
+        value: 20.0.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mineprofit-db
+          property: connectionString
       - key: SESSION_SECRET
         generateValue: true

@@ -7,13 +7,13 @@ const db = new Proxy({}, { get(_, prop) { const i = getDb(); return typeof i[pro
 const router = express.Router();
 
 // GET /api/shop/machines
-router.get('/machines', requireAuth, (req, res) => {
+router.get('/machines', requireAuth, async (req, res) => {
   try {
-    const machines = db.prepare('SELECT * FROM machines ORDER BY price ASC').all();
+    const machines = await db.prepare('SELECT * FROM machines ORDER BY price ASC').all();
     const userId = req.session.userId;
 
     // Get count of each machine the user owns
-    const owned = db.prepare(`
+    const owned = await db.prepare(`
       SELECT machine_id, COUNT(*) as count
       FROM user_machines WHERE user_id = ?
       GROUP BY machine_id
@@ -22,12 +22,12 @@ router.get('/machines', requireAuth, (req, res) => {
     const ownedMap = {};
     owned.forEach(o => { ownedMap[o.machine_id] = o.count; });
 
-    const user = db.prepare('SELECT balance FROM users WHERE id = ?').get(userId);
-    const discRows = db.prepare(`
+    const user = await db.prepare('SELECT balance FROM users WHERE id = ?').get(userId);
+    const discRows = await db.prepare(`
       SELECT value FROM user_boosters
-      WHERE user_id = ? AND type = 'discount' AND (expires_at IS NULL OR expires_at > datetime('now'))
+      WHERE user_id = ? AND type = 'discount' AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
     `).all(userId);
-    let discount = discRows.reduce((s, b) => s + (b.value || 0), 0);
+    let discount = discRows.reduce((s, b) => s + (Number(b.value) || 0), 0);
     if (discount < 0) discount = 0;
     if (discount > 0.9) discount = 0.9;
 
@@ -35,10 +35,10 @@ router.get('/machines', requireAuth, (req, res) => {
       machines: machines.map(m => ({
         ...m,
         owned: ownedMap[m.id] || 0,
-        effective_price: Math.ceil(m.price * (1 - discount)),
+        effective_price: Math.ceil(Number(m.price) * (1 - discount)),
         discount
       })),
-      balance: Math.floor(user.balance * 100) / 100
+      balance: Math.floor(Number(user.balance) * 100) / 100
     });
   } catch (err) {
     console.error('Shop error:', err);
@@ -47,7 +47,7 @@ router.get('/machines', requireAuth, (req, res) => {
 });
 
 // POST /api/shop/buy
-router.post('/buy', requireAuth, (req, res) => {
+router.post('/buy', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
     const { machineId } = req.body;
@@ -56,55 +56,53 @@ router.post('/buy', requireAuth, (req, res) => {
       return res.status(400).json({ error: 'Machine ID required' });
     }
 
-    const machine = db.prepare('SELECT * FROM machines WHERE id = ?').get(machineId);
+    const machine = await db.prepare('SELECT * FROM machines WHERE id = ?').get(machineId);
     if (!machine) {
       return res.status(404).json({ error: 'Machine not found' });
     }
 
-    if (machine.price === 0) {
+    if (Number(machine.price) === 0) {
       return res.status(400).json({ error: 'This machine is only available as a signup bonus' });
     }
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-    const discRows = db.prepare(`
+    const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    const discRows = await db.prepare(`
       SELECT value FROM user_boosters
-      WHERE user_id = ? AND type = 'discount' AND (expires_at IS NULL OR expires_at > datetime('now'))
+      WHERE user_id = ? AND type = 'discount' AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
     `).all(userId);
-    let discount = discRows.reduce((s, b) => s + (b.value || 0), 0);
+    let discount = discRows.reduce((s, b) => s + (Number(b.value) || 0), 0);
     if (discount < 0) discount = 0;
     if (discount > 0.9) discount = 0.9;
-    const effectivePrice = Math.ceil(machine.price * (1 - discount));
+    const effectivePrice = Math.ceil(Number(machine.price) * (1 - discount));
 
-    if (user.balance < effectivePrice) {
-      return res.status(400).json({ error: `Insufficient balance. Need ₹${effectivePrice}, have ₹${Math.floor(user.balance * 100) / 100}` });
+    if (Number(user.balance) < effectivePrice) {
+      return res.status(400).json({ error: `Insufficient balance. Need ₹${effectivePrice}, have ₹${Math.floor(Number(user.balance) * 100) / 100}` });
     }
 
     // Transaction: deduct balance, add machine, pay referral commissions
-    const buyTransaction = db.transaction(() => {
+    await db.transaction(async (client) => {
       // Deduct balance
-      db.prepare('UPDATE users SET balance = balance - ? WHERE id = ?').run(effectivePrice, userId);
+      await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [effectivePrice, userId]);
 
       // Add machine
-      db.prepare('INSERT INTO user_machines (user_id, machine_id) VALUES (?, ?)').run(userId, machineId);
+      await client.query('INSERT INTO user_machines (user_id, machine_id) VALUES ($1, $2)', [userId, machineId]);
 
       // Log purchase transaction
-      db.prepare(`
+      await client.query(`
         INSERT INTO transactions (user_id, type, amount, description)
-        VALUES (?, 'purchase', ?, ?)
-      `).run(userId, -effectivePrice, `Purchased ${machine.name}${discount ? ` (discount applied)` : ''}`);
+        VALUES ($1, 'purchase', $2, $3)
+      `, [userId, -effectivePrice, `Purchased ${machine.name}${discount ? ` (discount applied)` : ''}`]);
 
       // Pay referral commissions
-      payReferralCommission(userId, effectivePrice, machine.name);
+      await payReferralCommission(client, userId, effectivePrice, machine.name);
     });
 
-    buyTransaction();
-
-    const updatedUser = db.prepare('SELECT balance FROM users WHERE id = ?').get(userId);
+    const updatedUser = await db.prepare('SELECT balance FROM users WHERE id = ?').get(userId);
 
     res.json({
       success: true,
       message: `Successfully purchased ${machine.name}!`,
-      newBalance: Math.floor(updatedUser.balance * 100) / 100
+      newBalance: Math.floor(Number(updatedUser.balance) * 100) / 100
     });
   } catch (err) {
     console.error('Buy error:', err);
@@ -112,12 +110,13 @@ router.post('/buy', requireAuth, (req, res) => {
   }
 });
 
-function payReferralCommission(userId, purchaseAmount, machineName) {
+async function payReferralCommission(client, userId, purchaseAmount, machineName) {
   const commissionRates = [0.05, 0.03, 0.015]; // L1: 5%, L2: 3%, L3: 1.5%
   let currentUserId = userId;
 
   for (let level = 0; level < 3; level++) {
-    const user = db.prepare('SELECT referred_by_user_id FROM users WHERE id = ?').get(currentUserId);
+    const res = await client.query('SELECT referred_by_user_id FROM users WHERE id = $1', [currentUserId]);
+    const user = res.rows[0];
     if (!user || !user.referred_by_user_id) break;
 
     const referrerId = user.referred_by_user_id;
@@ -125,13 +124,13 @@ function payReferralCommission(userId, purchaseAmount, machineName) {
 
     if (commission > 0) {
       // Add commission to referrer's balance
-      db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(commission, referrerId);
+      await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [commission, referrerId]);
 
       // Log referral transaction
-      db.prepare(`
+      await client.query(`
         INSERT INTO transactions (user_id, type, amount, description)
-        VALUES (?, 'referral', ?, ?)
-      `).run(referrerId, commission, `Level ${level + 1} commission from ${machineName} purchase (${commissionRates[level] * 100}%)`);
+        VALUES ($1, 'referral', $2, $3)
+      `, [referrerId, commission, `Level ${level + 1} commission from ${machineName} purchase (${commissionRates[level] * 100}%)`]);
     }
 
     currentUserId = referrerId;

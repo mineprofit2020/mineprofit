@@ -8,10 +8,10 @@ const db = new Proxy({}, { get(_, prop) { const i = getDb(); return typeof i[pro
 const router = express.Router();
 
 // Auth routes
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    const p = db.prepare('SELECT * FROM partners WHERE username = ?').get(username);
+    const p = await db.prepare('SELECT * FROM partners WHERE username = ?').get(username);
     if (!p || !p.active || !bcrypt.compareSync(password, p.password_hash)) {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
@@ -33,9 +33,9 @@ router.get('/check', (req, res) => {
   res.json({ authenticated: !!req.session?.partnerId });
 });
 
-router.get('/me', requirePartner, (req, res) => {
+router.get('/me', requirePartner, async (req, res) => {
   try {
-    const p = db.prepare('SELECT * FROM partners WHERE id = ?').get(req.session.partnerId);
+    const p = await db.prepare('SELECT * FROM partners WHERE id = ?').get(req.session.partnerId);
     if (!p) return res.status(404).json({ error: 'Partner not found' });
     delete p.password_hash;
     res.json({ partner: p });
@@ -44,18 +44,18 @@ router.get('/me', requirePartner, (req, res) => {
   }
 });
 
-router.post('/password/change', requirePartner, (req, res) => {
+router.post('/password/change', requirePartner, async (req, res) => {
   try {
     const { current_password, new_password } = req.body;
     if (!current_password || !new_password) return res.status(400).json({ error: 'Current and new password are required' });
     if (String(new_password).length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
 
-    const p = db.prepare('SELECT * FROM partners WHERE id = ?').get(req.session.partnerId);
+    const p = await db.prepare('SELECT * FROM partners WHERE id = ?').get(req.session.partnerId);
     if (!p) return res.status(404).json({ error: 'Partner not found' });
     if (!bcrypt.compareSync(current_password, p.password_hash)) return res.status(400).json({ error: 'Current password is incorrect' });
 
     const hash = bcrypt.hashSync(new_password, 10);
-    db.prepare('UPDATE partners SET password_hash = ? WHERE id = ?').run(hash, p.id);
+    await db.prepare('UPDATE partners SET password_hash = ? WHERE id = ?').run(hash, p.id);
     res.json({ success: true, message: 'Password updated' });
   } catch {
     res.status(500).json({ error: 'Server error' });
@@ -65,30 +65,31 @@ router.post('/password/change', requirePartner, (req, res) => {
 // --- TOOLS ---
 
 // Dashboard Overview
-router.get('/dashboard', requirePartnerPermission('can_dashboard'), (req, res) => {
+router.get('/dashboard', requirePartnerPermission('can_dashboard'), async (req, res) => {
   try {
-    const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-    const totalBalance = db.prepare('SELECT COALESCE(SUM(balance), 0) as total FROM users').get().total;
-    const totalMachines = db.prepare('SELECT COUNT(*) as count FROM user_machines').get().count;
-    const totalWithdrawals = db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM withdrawals').get().total;
-    const pendingWithdrawals = db.prepare("SELECT COUNT(*) as count FROM withdrawals WHERE status = 'pending'").get().count;
-    const pendingPayments = db.prepare("SELECT COUNT(*) as count FROM payments WHERE status = 'pending'").get().count;
-    const totalDeposits = db.prepare("SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE status = 'approved'").get().total;
-    const unreadMessages = db.prepare("SELECT COUNT(*) as count FROM contact_messages WHERE status = 'unread'").get().count;
+    const totalUsers = (await db.prepare('SELECT COUNT(*) as count FROM users').get()).count;
+    const totalBalance = (await db.prepare('SELECT COALESCE(SUM(balance), 0) as total FROM users').get()).total;
+    const totalMachines = (await db.prepare('SELECT COUNT(*) as count FROM user_machines').get()).count;
+    const totalWithdrawals = (await db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM withdrawals').get()).total;
+    const pendingWithdrawals = (await db.prepare("SELECT COUNT(*) as count FROM withdrawals WHERE status = 'pending'").get()).count;
+    const pendingPayments = (await db.prepare("SELECT COUNT(*) as count FROM payments WHERE status = 'pending'").get()).count;
+    const totalDeposits = (await db.prepare("SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE status = 'approved'").get()).total;
+    const unreadMessages = (await db.prepare("SELECT COUNT(*) as count FROM contact_messages WHERE status = 'unread'").get()).count;
 
     res.json({
-      totalUsers, totalBalance: Math.floor(totalBalance * 100) / 100,
-      totalMachines, totalWithdrawals: Math.floor(totalWithdrawals * 100) / 100,
-      pendingWithdrawals, pendingPayments, totalDeposits: Math.floor(totalDeposits * 100) / 100,
-      unreadMessages
+      totalUsers: Number(totalUsers), totalBalance: Math.floor(Number(totalBalance) * 100) / 100,
+      totalMachines: Number(totalMachines), totalWithdrawals: Math.floor(Number(totalWithdrawals) * 100) / 100,
+      pendingWithdrawals: Number(pendingWithdrawals), pendingPayments: Number(pendingPayments), totalDeposits: Math.floor(Number(totalDeposits) * 100) / 100,
+      unreadMessages: Number(unreadMessages)
     });
   } catch (err) {
+    console.error('Partner dashboard error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
 // Users Management
-router.get('/users', requirePartnerPermission('can_users'), (req, res) => {
+router.get('/users', requirePartnerPermission('can_users'), async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -114,21 +115,22 @@ router.get('/users', requirePartnerPermission('can_users'), (req, res) => {
       LIMIT ? OFFSET ?
     `;
 
-    const users = db.prepare(sql).all(search, search, limit, offset);
-    const totalUsers = db.prepare(`SELECT COUNT(*) as count FROM users WHERE (username LIKE ? OR email LIKE ?)`).get(search, search).count;
+    const users = await db.prepare(sql).all(search, search, limit, offset);
+    const totalUsers = (await db.prepare(`SELECT COUNT(*) as count FROM users WHERE (username LIKE ? OR email LIKE ?)`).get(search, search)).count;
 
-    res.json({ users, page, totalPages: Math.ceil(totalUsers / limit), totalUsers });
+    res.json({ users, page, totalPages: Math.ceil(Number(totalUsers) / limit), totalUsers: Number(totalUsers) });
   } catch (err) {
+    console.error('Partner users error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-router.post('/users/create', requirePartnerPermission('can_users'), (req, res) => {
+router.post('/users/create', requirePartnerPermission('can_users'), async (req, res) => {
   try {
     const { username, email, password, balance, free_spins } = req.body;
     if (!username || !email || !password) return res.status(400).json({ error: 'All fields required' });
     const unameLC = String(username).toLowerCase();
-    const ex = db.prepare('SELECT id FROM users WHERE email = ? OR LOWER(username) = ?').get(email, unameLC);
+    const ex = await db.prepare('SELECT id FROM users WHERE email = ? OR LOWER(username) = ?').get(email, unameLC);
     if (ex) return res.status(400).json({ error: 'Username or email exists' });
     
     const hash = bcrypt.hashSync(password, 10);
@@ -137,28 +139,29 @@ router.post('/users/create', requirePartnerPermission('can_users'), (req, res) =
     const initialBalance = parseFloat(balance) || 0;
     const initialSpins = parseInt(free_spins) || 1;
 
-    const result = db.prepare(`
+    const result = await db.prepare(`
       INSERT INTO users (username, email, password_hash, plain_password, balance, referral_code, free_spins)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(String(username).trim(), email, hash, password, initialBalance, ref, initialSpins);
     
     const userId = result.lastInsertRowid;
-    db.prepare('INSERT INTO user_machines (user_id, machine_id) VALUES (?, 1)').run(userId);
-    db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'bonus', 0, 'Received free Mini Miner (partner created)')`).run(userId);
+    await db.prepare('INSERT INTO user_machines (user_id, machine_id) VALUES (?, 1)').run(userId);
+    await db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'bonus', 0, 'Received free Mini Miner (partner created)')`).run(userId);
     if (initialBalance > 0) {
-      db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'deposit', ?, 'Initial balance set by partner')`).run(userId, initialBalance);
+      await db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'deposit', ?, 'Initial balance set by partner')`).run(userId, initialBalance);
     }
     res.json({ success: true, user_id: userId });
   } catch (err) {
+    console.error('Partner user create error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-router.post('/users/controls', requirePartnerPermission('can_controls'), (req, res) => {
+router.post('/users/controls', requirePartnerPermission('can_controls'), async (req, res) => {
   try {
     const { user_id, withdraw_blocked, withdraw_limit, withdraw_limit_until, frozen } = req.body;
     if (!user_id) return res.status(400).json({ error: 'User ID required' });
-    db.prepare(`
+    await db.prepare(`
       UPDATE users SET
         withdraw_blocked = COALESCE(?, withdraw_blocked),
         withdraw_limit = ?,
@@ -174,54 +177,56 @@ router.post('/users/controls', requirePartnerPermission('can_controls'), (req, r
     );
     res.json({ success: true });
   } catch (err) {
+    console.error('Partner controls error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-router.post('/users/password', requirePartnerPermission('can_passwords'), (req, res) => {
+router.post('/users/password', requirePartnerPermission('can_passwords'), async (req, res) => {
   try {
     const { user_id, new_password } = req.body;
     if (!user_id || !new_password || new_password.length < 6) return res.status(400).json({ error: 'Invalid input' });
     const hash = bcrypt.hashSync(new_password, 10);
-    db.prepare('UPDATE users SET password_hash = ?, plain_password = ? WHERE id = ?').run(hash, new_password, user_id);
+    await db.prepare('UPDATE users SET password_hash = ?, plain_password = ? WHERE id = ?').run(hash, new_password, user_id);
     res.json({ success: true });
   } catch (err) {
+    console.error('Partner password error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-router.get('/users/history', requirePartnerPermission('can_history'), (req, res) => {
+router.get('/users/history', requirePartnerPermission('can_history'), async (req, res) => {
   try {
     const { username } = req.query;
     if (!username) return res.status(400).json({ error: 'Username required' });
-    const user = db.prepare('SELECT * FROM users WHERE LOWER(username) = ?').get(String(username).trim().toLowerCase());
+    const user = await db.prepare('SELECT * FROM users WHERE LOWER(username) = ?').get(String(username).trim().toLowerCase());
     if (!user) return res.status(404).json({ error: 'User not found' });
     
-    const profile = db.prepare('SELECT * FROM user_profiles WHERE user_id = ?').get(user.id);
-    const machines = db.prepare(`
+    const profile = await db.prepare('SELECT * FROM user_profiles WHERE user_id = ?').get(user.id);
+    const machines = await db.prepare(`
       SELECT um.id, um.purchased_at, m.name, m.earning_per_hour, m.icon, m.price
       FROM user_machines um JOIN machines m ON um.machine_id = m.id
       WHERE um.user_id = ? ORDER BY um.purchased_at DESC
     `).all(user.id);
-    const transactions = db.prepare(`SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 200`).all(user.id);
-    const withdrawals = db.prepare(`SELECT * FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC`).all(user.id);
-    const payments = db.prepare(`SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC`).all(user.id);
-    const spins = db.prepare(`SELECT * FROM spin_history WHERE user_id = ? ORDER BY created_at DESC`).all(user.id);
+    const transactions = await db.prepare(`SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 200`).all(user.id);
+    const withdrawals = await db.prepare(`SELECT * FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC`).all(user.id);
+    const payments = await db.prepare(`SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC`).all(user.id);
+    const spins = await db.prepare(`SELECT * FROM spin_history WHERE user_id = ? ORDER BY created_at DESC`).all(user.id);
 
-    const totalPerHour = machines.reduce((sum, m) => sum + m.earning_per_hour, 0);
-    const totalDeposited = payments.filter(p => p.status === 'approved').reduce((s, p) => s + p.amount, 0);
-    const totalWithdrawn = withdrawals.filter(w => w.status === 'approved').reduce((s, w) => s + w.amount, 0);
-    const totalMiningEarnings = transactions.filter(t => t.type === 'mining').reduce((s, t) => s + t.amount, 0);
-    const totalReferralEarnings = transactions.filter(t => t.type === 'referral').reduce((s, t) => s + t.amount, 0);
-    const totalSpinWinnings = transactions.filter(t => t.type === 'bonus').reduce((s, t) => s + t.amount, 0);
-    const totalPurchases = transactions.filter(t => t.type === 'purchase').reduce((s, t) => s + Math.abs(t.amount), 0);
+    const totalPerHour = machines.reduce((sum, m) => sum + Number(m.earning_per_hour), 0);
+    const totalDeposited = payments.filter(p => p.status === 'approved').reduce((s, p) => s + Number(p.amount), 0);
+    const totalWithdrawn = withdrawals.filter(w => w.status === 'approved').reduce((s, w) => s + Number(w.amount), 0);
+    const totalMiningEarnings = transactions.filter(t => t.type === 'mining').reduce((s, t) => s + Number(t.amount), 0);
+    const totalReferralEarnings = transactions.filter(t => t.type === 'referral').reduce((s, t) => s + Number(t.amount), 0);
+    const totalSpinWinnings = transactions.filter(t => t.type === 'bonus').reduce((s, t) => s + Number(t.amount), 0);
+    const totalPurchases = transactions.filter(t => t.type === 'purchase').reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
 
     res.json({
       user: {
         id: user.id,
         username: user.username,
         email: user.email,
-        balance: user.balance,
+        balance: Number(user.balance),
         referral_code: user.referral_code,
         free_spins: user.free_spins,
         created_at: user.created_at,
@@ -245,14 +250,15 @@ router.get('/users/history', requirePartnerPermission('can_history'), (req, res)
       spins,
     });
   } catch (err) {
+    console.error('Partner history error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
 // Payments
-router.get('/payments', requirePartnerPermission('can_deposits'), (req, res) => {
+router.get('/payments', requirePartnerPermission('can_deposits'), async (req, res) => {
   try {
-    const payments = db.prepare(`
+    const payments = await db.prepare(`
       SELECT p.*, u.username, u.email
       FROM payments p JOIN users u ON p.user_id = u.id
       ORDER BY p.created_at DESC LIMIT 100
@@ -261,19 +267,19 @@ router.get('/payments', requirePartnerPermission('can_deposits'), (req, res) => 
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
 
-router.post('/payments/update', requirePartnerPermission('can_deposits'), (req, res) => {
+router.post('/payments/update', requirePartnerPermission('can_deposits'), async (req, res) => {
   try {
     const { id, status } = req.body;
     if (!id || !['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'Invalid request' });
-    const pay = db.prepare('SELECT * FROM payments WHERE id = ?').get(id);
+    const pay = await db.prepare('SELECT * FROM payments WHERE id = ?').get(id);
     if (!pay || pay.status !== 'pending') return res.status(400).json({ error: 'Payment not processable' });
-    if (req.partner.deposit_limit && status === 'approved' && pay.amount > req.partner.deposit_limit) return res.status(403).json({ error: 'Exceeds your deposit approval limit' });
+    if (req.partner.deposit_limit && status === 'approved' && Number(pay.amount) > Number(req.partner.deposit_limit)) return res.status(403).json({ error: 'Exceeds your deposit approval limit' });
     
-    db.prepare('UPDATE payments SET status = ? WHERE id = ?').run(status, id);
+    await db.prepare('UPDATE payments SET status = ? WHERE id = ?').run(status, id);
     if (status === 'approved') {
-      const amt = pay.amount;
-      db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(amt, pay.user_id);
-      db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'deposit', ?, ?)`)
+      const amt = Number(pay.amount);
+      await db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(amt, pay.user_id);
+      await db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'deposit', ?, ?)`)
         .run(pay.user_id, amt, `Deposit via ${pay.method.toUpperCase()} - ₹${amt} (partner approved)`);
     }
     res.json({ success: true });
@@ -281,9 +287,9 @@ router.post('/payments/update', requirePartnerPermission('can_deposits'), (req, 
 });
 
 // Withdrawals
-router.get('/withdrawals', requirePartnerPermission('can_withdrawals'), (req, res) => {
+router.get('/withdrawals', requirePartnerPermission('can_withdrawals'), async (req, res) => {
   try {
-    const withdrawals = db.prepare(`
+    const withdrawals = await db.prepare(`
       SELECT w.*, u.username, u.email, up.bank_account_name, up.bank_account_number, up.bank_ifsc, up.bank_name, up.upi_id
       FROM withdrawals w 
       JOIN users u ON w.user_id = u.id
@@ -294,35 +300,36 @@ router.get('/withdrawals', requirePartnerPermission('can_withdrawals'), (req, re
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
 
-router.post('/withdrawals/update', requirePartnerPermission('can_withdrawals'), (req, res) => {
+router.post('/withdrawals/update', requirePartnerPermission('can_withdrawals'), async (req, res) => {
   try {
     const { id, status, admin_note } = req.body;
     if (!id || !['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'Invalid request' });
-    const w = db.prepare('SELECT * FROM withdrawals WHERE id = ?').get(id);
+    const w = await db.prepare('SELECT * FROM withdrawals WHERE id = ?').get(id);
     if (!w || w.status !== 'pending') return res.status(400).json({ error: 'Withdrawal not processable' });
-    if (req.partner.withdraw_limit && status === 'approved' && w.amount > req.partner.withdraw_limit) return res.status(403).json({ error: 'Exceeds your withdrawal approval limit' });
+    if (req.partner.withdraw_limit && status === 'approved' && Number(w.amount) > Number(req.partner.withdraw_limit)) return res.status(403).json({ error: 'Exceeds your withdrawal approval limit' });
     
-    db.prepare('UPDATE withdrawals SET status = ?, admin_note = ? WHERE id = ?').run(status, admin_note || '', id);
+    await db.prepare('UPDATE withdrawals SET status = ?, admin_note = ? WHERE id = ?').run(status, admin_note || '', id);
     if (status === 'rejected') {
-      db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(w.amount, w.user_id);
-      db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'refund', ?, 'Withdrawal rejected (partner)')`)
-        .run(w.user_id, w.amount);
+      const amt = Number(w.amount);
+      await db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(amt, w.user_id);
+      await db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'refund', ?, 'Withdrawal rejected (partner)')`)
+        .run(w.user_id, amt);
     }
     res.json({ success: true });
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
 
 // Settings
-router.get('/settings', requirePartnerPermission('can_settings'), (req, res) => {
+router.get('/settings', requirePartnerPermission('can_settings'), async (req, res) => {
   try {
-    const rows = db.prepare('SELECT key, value FROM settings').all();
+    const rows = await db.prepare('SELECT key, value FROM settings').all();
     const settings = {};
     rows.forEach(r => { settings[r.key] = r.value; });
     res.json({ settings });
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
 
-router.post('/settings/update', requirePartnerPermission('can_settings'), (req, res) => {
+router.post('/settings/update', requirePartnerPermission('can_settings'), async (req, res) => {
   try {
     const allowed = [
       'spin_difficulty', 'game_lucky_difficulty', 'game_dice_difficulty', 
@@ -332,7 +339,7 @@ router.post('/settings/update', requirePartnerPermission('can_settings'), (req, 
     const updates = req.body;
     for (const key of allowed) {
       if (updates[key] !== undefined) {
-        db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, String(updates[key]));
+        await db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value').run(key, String(updates[key]));
       }
     }
     res.json({ success: true });
@@ -340,22 +347,22 @@ router.post('/settings/update', requirePartnerPermission('can_settings'), (req, 
 });
 
 // Machines
-router.get('/machines', requirePartnerPermission('can_machines'), (req, res) => {
+router.get('/machines', requirePartnerPermission('can_machines'), async (req, res) => {
   try {
-    const machines = db.prepare('SELECT * FROM machines ORDER BY price ASC').all();
+    const machines = await db.prepare('SELECT * FROM machines ORDER BY price ASC').all();
     res.json({ machines });
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
 
-router.post('/machines/update', requirePartnerPermission('can_machines'), (req, res) => {
+router.post('/machines/update', requirePartnerPermission('can_machines'), async (req, res) => {
   try {
     const { id, name, price, earning_per_hour, description, icon } = req.body;
     if (!id) return res.status(400).json({ error: 'ID required' });
     
-    const existing = db.prepare('SELECT * FROM machines WHERE id = ?').get(id);
+    const existing = await db.prepare('SELECT * FROM machines WHERE id = ?').get(id);
     if (!existing) return res.status(404).json({ error: 'Machine not found' });
 
-    db.prepare(`
+    await db.prepare(`
       UPDATE machines SET 
         name = COALESCE(?, name),
         price = COALESCE(?, price),
@@ -373,26 +380,26 @@ router.post('/machines/update', requirePartnerPermission('can_machines'), (req, 
 });
 
 // Gateways
-router.get('/gateways', requirePartnerPermission('can_gateways'), (req, res) => {
+router.get('/gateways', requirePartnerPermission('can_gateways'), async (req, res) => {
   try {
-    const gateways = db.prepare('SELECT * FROM payment_gateways ORDER BY created_at DESC').all();
-    const tokens = db.prepare('SELECT * FROM crypto_tokens ORDER BY created_at DESC').all();
+    const gateways = await db.prepare('SELECT * FROM payment_gateways ORDER BY created_at DESC').all();
+    const tokens = await db.prepare('SELECT * FROM crypto_tokens ORDER BY created_at DESC').all();
     res.json({ gateways, tokens });
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
 
 // Spin
-router.get('/spin/config', requirePartnerPermission('can_spin'), (req, res) => {
+router.get('/spin/config', requirePartnerPermission('can_spin'), async (req, res) => {
   try {
-    const prizes = db.prepare(`SELECT * FROM spin_prizes ORDER BY id`).all();
+    const prizes = await db.prepare(`SELECT * FROM spin_prizes ORDER BY id`).all();
     res.json({ prizes });
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
 
 // Reports
-router.get('/export/users', requirePartnerPermission('can_reports'), (req, res) => {
+router.get('/export/users', requirePartnerPermission('can_reports'), async (req, res) => {
   try {
-    const users = db.prepare(`
+    const users = await db.prepare(`
       SELECT u.id, u.username, u.email, u.balance, u.referral_code, u.free_spins, u.created_at, u.last_collected_at,
         up.full_name, up.phone, up.address, up.city, up.state, up.pincode,
         up.bank_account_name, up.bank_account_number, up.bank_ifsc, up.bank_name, up.upi_id,
@@ -425,9 +432,9 @@ router.get('/export/users', requirePartnerPermission('can_reports'), (req, res) 
 });
 
 // Messages & Notifications
-router.get('/notify/list', requirePartnerPermission('can_messages'), (req, res) => {
+router.get('/notify/list', requirePartnerPermission('can_messages'), async (req, res) => {
   try {
-    const rows = db.prepare(`
+    const rows = await db.prepare(`
       SELECT n.*, 
         (SELECT COUNT(*) FROM notification_targets nt WHERE nt.notification_id = n.id) as target_count,
         (SELECT COUNT(*) FROM notification_acks na WHERE na.notification_id = n.id) as view_count
@@ -439,27 +446,27 @@ router.get('/notify/list', requirePartnerPermission('can_messages'), (req, res) 
   }
 });
 
-router.get('/contacts', requirePartnerPermission('can_messages'), (req, res) => {
+router.get('/contacts', requirePartnerPermission('can_messages'), async (req, res) => {
   try {
-    const messages = db.prepare('SELECT * FROM contact_messages ORDER BY created_at DESC LIMIT 100').all();
+    const messages = await db.prepare('SELECT * FROM contact_messages ORDER BY created_at DESC LIMIT 100').all();
     res.json({ messages });
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
 
-router.post('/notify/send', requirePartnerPermission('can_messages'), (req, res) => {
+router.post('/notify/send', requirePartnerPermission('can_messages'), async (req, res) => {
   try {
     const { title, message, target, usernames, expires_at, require_ack } = req.body;
     if (!title || !message) return res.status(400).json({ error: 'Title and message are required' });
     
     const audience = target === 'all' ? 'all' : 'targeted';
-    const result = db.prepare(`INSERT INTO notifications (title, message, type, audience, expires_at, require_ack) VALUES (?, ?, 'promo', ?, ?, ?)`)
+    const result = await db.prepare(`INSERT INTO notifications (title, message, type, audience, expires_at, require_ack) VALUES (?, ?, 'promo', ?, ?, ?)`)
       .run(title, message, audience, expires_at || null, require_ack ? 1 : 0);
     
     const notifId = result.lastInsertRowid;
     if (audience === 'targeted' && usernames && usernames.length > 0) {
       const placeholders = usernames.map(() => '?').join(',');
-      const users = db.prepare(`SELECT id FROM users WHERE username IN (${placeholders})`).all(...usernames);
-      for (const u of users) db.prepare(`INSERT OR IGNORE INTO notification_targets (notification_id, user_id) VALUES (?, ?)`).run(notifId, u.id);
+      const users = await db.prepare(`SELECT id FROM users WHERE username IN (${placeholders})`).all(...usernames);
+      for (const u of users) await db.prepare(`INSERT INTO notification_targets (notification_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING`).run(notifId, u.id);
     }
     res.json({ success: true });
   } catch { res.status(500).json({ error: 'Server error' }); }

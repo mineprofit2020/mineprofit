@@ -6,7 +6,7 @@ const db = new Proxy({}, { get(_, prop) { const i = getDb(); return typeof i[pro
 const router = express.Router();
 
 // POST /api/contact - Submit contact message
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { name, email, subject, message } = req.body;
 
@@ -16,7 +16,7 @@ router.post('/', (req, res) => {
 
     const userId = req.session?.userId || null;
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO contact_messages (user_id, name, email, subject, message)
       VALUES (?, ?, ?, ?, ?)
     `).run(userId, name, email, subject || 'General Inquiry', message);

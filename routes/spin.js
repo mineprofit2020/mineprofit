@@ -6,30 +6,30 @@ const db = new Proxy({}, { get(_, prop) { const i = getDb(); return typeof i[pro
 
 const router = express.Router();
 
-function getSpinCost() {
-  const row = db.prepare(`SELECT value FROM settings WHERE key = 'spin_cost'`).get();
+async function getSpinCost() {
+  const row = await db.prepare(`SELECT value FROM settings WHERE key = 'spin_cost'`).get();
   const v = parseFloat(row?.value || '200');
   return isNaN(v) ? 200 : v;
 }
 
-function getPrizes() {
-  const rows = db.prepare(`
+async function getPrizes() {
+  const rows = await db.prepare(`
     SELECT id, label, type, amount, machine_id, weight, enabled
     FROM spin_prizes WHERE enabled = 1
   `).all();
   return rows.map(r => ({
     id: r.id,
     type: r.type,
-    value: r.type === 'balance' ? (r.amount || 0) : r.type === 'machine' ? r.machine_id : null,
+    value: r.type === 'balance' ? (Number(r.amount) || 0) : r.type === 'machine' ? r.machine_id : null,
     machineId: r.machine_id || null,
-    amount: r.amount || 0,
+    amount: Number(r.amount) || 0,
     label: r.label,
-    weight: r.weight
+    weight: Number(r.weight)
   }));
 }
 
-function getSpinTunables() {
-  const d = db.prepare(`SELECT key, value FROM settings WHERE key IN ('spin_difficulty','spin_reward_multiplier')`).all();
+async function getSpinTunables() {
+  const d = await db.prepare(`SELECT key, value FROM settings WHERE key IN ('spin_difficulty','spin_reward_multiplier')`).all();
   const map = {};
   d.forEach(r => { map[r.key] = r.value; });
   const difficulty = Math.max(0, Math.min(100, parseFloat(map['spin_difficulty'] || '0')));
@@ -37,10 +37,10 @@ function getSpinTunables() {
   return { difficulty, rewardMul };
 }
 
-function pickPrizeDynamic() {
-  const prizes = getPrizes();
+async function pickPrizeDynamic() {
+  const prizes = await getPrizes();
   if (prizes.length === 0) return null;
-  const { difficulty } = getSpinTunables();
+  const { difficulty } = await getSpinTunables();
   const weights = prizes.map(p => {
     let w = p.weight || 0;
     if (p.type === 'lose') {
@@ -60,14 +60,14 @@ function pickPrizeDynamic() {
 }
 
 // GET /api/spin/status
-router.get('/status', requireAuth, (req, res) => {
+router.get('/status', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
-    const user = db.prepare('SELECT balance, free_spins FROM users WHERE id = ?').get(userId);
-    const history = db.prepare('SELECT * FROM spin_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 20').all(userId);
+    const user = await db.prepare('SELECT balance, free_spins FROM users WHERE id = ?').get(userId);
+    const history = await db.prepare('SELECT * FROM spin_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 20').all(userId);
 
     // Get real recent wins
-    let realWins = db.prepare(`
+    let realWins = await db.prepare(`
       SELECT sh.prize_type, sh.prize_value, sh.created_at, u.username
       FROM spin_history sh JOIN users u ON sh.user_id = u.id
       WHERE sh.prize_type = 'machine'
@@ -102,11 +102,11 @@ router.get('/status', requireAuth, (req, res) => {
     recentWins.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     recentWins = recentWins.slice(0, 15); // Keep top 15
 
-    const dbPrizes = getPrizes();
+    const dbPrizes = await getPrizes();
     res.json({
       freeSpins: user.free_spins || 0,
-      balance: Math.floor(user.balance * 100) / 100,
-      spinCost: getSpinCost(),
+      balance: Math.floor(Number(user.balance) * 100) / 100,
+      spinCost: await getSpinCost(),
       prizes: dbPrizes.map(p => ({ label: p.label, type: p.type })),
       history,
       recentWins
@@ -118,33 +118,32 @@ router.get('/status', requireAuth, (req, res) => {
 });
 
 // POST /api/spin/play - Use a free spin
-router.post('/play', requireAuth, (req, res) => {
+router.post('/play', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
-    const user = db.prepare('SELECT balance, free_spins FROM users WHERE id = ?').get(userId);
+    const user = await db.prepare('SELECT balance, free_spins FROM users WHERE id = ?').get(userId);
 
     if ((user.free_spins || 0) < 1) {
-      return res.status(400).json({ error: 'No free spins available. Buy a spin for ₹' + getSpinCost() + '!' });
+      const spinCost = await getSpinCost();
+      return res.status(400).json({ error: 'No free spins available. Buy a spin for ₹' + spinCost + '!' });
     }
 
-    const prize = pickPrizeDynamic();
+    const prize = await pickPrizeDynamic();
     if (!prize) return res.status(500).json({ error: 'Spin is temporarily unavailable' });
 
-    const spinTx = db.transaction(() => {
+    await db.transaction(async (client) => {
       // Deduct free spin
-      db.prepare('UPDATE users SET free_spins = free_spins - 1 WHERE id = ?').run(userId);
+      await client.query('UPDATE users SET free_spins = free_spins - 1 WHERE id = $1', [userId]);
 
       // Award prize
       if (prize.type === 'machine') {
-        db.prepare('INSERT INTO user_machines (user_id, machine_id) VALUES (?, ?)').run(userId, prize.machineId);
-        db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'bonus', 0, ?)`)
-          .run(userId, `Won machine from Spin Wheel!`);
+        await client.query('INSERT INTO user_machines (user_id, machine_id) VALUES ($1, $2)', [userId, prize.machineId]);
+        await client.query(`INSERT INTO transactions (user_id, type, amount, description) VALUES ($1, 'bonus', 0, $2)`, [userId, `Won machine from Spin Wheel!`]);
       } else if (prize.type === 'balance') {
-        const { rewardMul } = getSpinTunables();
-        const amt = Math.floor(((prize.amount || prize.value || 0) * rewardMul) * 100) / 100;
-        db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(amt, userId);
-        db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'bonus', ?, ?)`)
-          .run(userId, amt, `Won ₹${amt} from Spin Wheel!`);
+        const { rewardMul } = await getSpinTunables();
+        const amt = Math.floor(((Number(prize.amount) || Number(prize.value) || 0) * rewardMul) * 100) / 100;
+        await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [amt, userId]);
+        await client.query(`INSERT INTO transactions (user_id, type, amount, description) VALUES ($1, 'bonus', $2, $3)`, [userId, amt, `Won ₹${amt} from Spin Wheel!`]);
       } else if (prize.type === 'lose') {
         // No reward
       }
@@ -153,24 +152,22 @@ router.post('/play', requireAuth, (req, res) => {
       const prizeValue = prize.type === 'machine'
         ? (prize.machineId || '').toString()
         : prize.type === 'balance'
-          ? (prize.amount || prize.value || 0).toString()
+          ? (Number(prize.amount) || Number(prize.value) || 0).toString()
           : 'lose';
-      db.prepare('INSERT INTO spin_history (user_id, prize_type, prize_value) VALUES (?, ?, ?)').run(userId, prize.type, prizeValue);
+      await client.query('INSERT INTO spin_history (user_id, prize_type, prize_value) VALUES ($1, $2, $3)', [userId, prize.type, prizeValue]);
     });
 
-    spinTx();
-
-    const updatedUser = db.prepare('SELECT balance, free_spins FROM users WHERE id = ?').get(userId);
+    const updatedUser = await db.prepare('SELECT balance, free_spins FROM users WHERE id = ?').get(userId);
 
     res.json({
       success: true,
       prize: {
         type: prize.type,
-        value: prize.type === 'machine' ? prize.machineId : prize.type === 'balance' ? (prize.amount || prize.value || 0) : 'lose',
+        value: prize.type === 'machine' ? prize.machineId : prize.type === 'balance' ? (Number(prize.amount) || Number(prize.value) || 0) : 'lose',
         label: prize.label
       },
       freeSpins: updatedUser.free_spins || 0,
-      balance: Math.floor(updatedUser.balance * 100) / 100
+      balance: Math.floor(Number(updatedUser.balance) * 100) / 100
     });
   } catch (err) {
     console.error('Spin play error:', err);
@@ -179,7 +176,7 @@ router.post('/play', requireAuth, (req, res) => {
 });
 
 // POST /api/spin/bundle - Buy a bundle of spins (5, 10, 20) with discount
-router.post('/bundle', requireAuth, (req, res) => {
+router.post('/bundle', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
     const { count } = req.body;
@@ -188,8 +185,8 @@ router.post('/bundle', requireAuth, (req, res) => {
       return res.status(400).json({ error: 'Invalid bundle size. Choose 5, 10, or 20.' });
     }
 
-    const user = db.prepare('SELECT balance FROM users WHERE id = ?').get(userId);
-    const SPIN_COST = getSpinCost();
+    const user = await db.prepare('SELECT balance FROM users WHERE id = ?').get(userId);
+    const SPIN_COST = await getSpinCost();
     
     let discount = 0;
     if (count === 5) discount = 0.05; // 5% off
@@ -198,44 +195,42 @@ router.post('/bundle', requireAuth, (req, res) => {
     
     const totalCost = Math.floor(SPIN_COST * count * (1 - discount));
 
-    if (user.balance < totalCost) {
-      return res.status(400).json({ error: `Insufficient balance. Need ₹${totalCost}, have ₹${Math.floor(user.balance * 100) / 100}` });
+    if (Number(user.balance) < totalCost) {
+      return res.status(400).json({ error: `Insufficient balance. Need ₹${totalCost}, have ₹${Math.floor(Number(user.balance) * 100) / 100}` });
     }
 
     const results = [];
     let totalWonBalance = 0;
 
-    const bundleTx = db.transaction(() => {
+    await db.transaction(async (client) => {
       // Deduct cost
-      db.prepare('UPDATE users SET balance = balance - ? WHERE id = ?').run(totalCost, userId);
-      db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'purchase', ?, ?)`)
-        .run(userId, -totalCost, `Purchased ${count} Spins Bundle`);
+      await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [totalCost, userId]);
+      await client.query(`INSERT INTO transactions (user_id, type, amount, description) VALUES ($1, 'purchase', $2, $3)`, [userId, -totalCost, `Purchased ${count} Spins Bundle`]);
+
+      const { rewardMul } = await getSpinTunables();
 
       for (let i = 0; i < count; i++) {
-        const prize = pickPrizeDynamic();
+        const prize = await pickPrizeDynamic();
         if (!prize) continue; // Should not happen
 
         let prizeValue = 'lose';
         let prizeDesc = 'Better luck next time';
 
         if (prize.type === 'machine') {
-          db.prepare('INSERT INTO user_machines (user_id, machine_id) VALUES (?, ?)').run(userId, prize.machineId);
-          db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'bonus', 0, ?)`)
-            .run(userId, `Won machine from Spin Bundle`);
+          await client.query('INSERT INTO user_machines (user_id, machine_id) VALUES ($1, $2)', [userId, prize.machineId]);
+          await client.query(`INSERT INTO transactions (user_id, type, amount, description) VALUES ($1, 'bonus', 0, $2)`, [userId, `Won machine from Spin Bundle`]);
           prizeValue = (prize.machineId || '').toString();
           prizeDesc = prize.label;
         } else if (prize.type === 'balance') {
-          const { rewardMul } = getSpinTunables();
-          const amt = Math.floor(((prize.amount || prize.value || 0) * rewardMul) * 100) / 100;
-          db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(amt, userId);
-          db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'bonus', ?, ?)`)
-            .run(userId, amt, `Won ₹${amt} from Spin Bundle`);
+          const amt = Math.floor(((Number(prize.amount) || Number(prize.value) || 0) * rewardMul) * 100) / 100;
+          await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [amt, userId]);
+          await client.query(`INSERT INTO transactions (user_id, type, amount, description) VALUES ($1, 'bonus', $2, $3)`, [userId, amt, `Won ₹${amt} from Spin Bundle`]);
           prizeValue = amt.toString();
           totalWonBalance += amt;
           prizeDesc = `₹${amt}`;
         }
 
-        db.prepare('INSERT INTO spin_history (user_id, prize_type, prize_value) VALUES (?, ?, ?)').run(userId, prize.type, prizeValue);
+        await client.query('INSERT INTO spin_history (user_id, prize_type, prize_value) VALUES ($1, $2, $3)', [userId, prize.type, prizeValue]);
         
         results.push({
           type: prize.type,
@@ -246,15 +241,13 @@ router.post('/bundle', requireAuth, (req, res) => {
       }
     });
 
-    bundleTx();
-
-    const updatedUser = db.prepare('SELECT balance, free_spins FROM users WHERE id = ?').get(userId);
+    const updatedUser = await db.prepare('SELECT balance, free_spins FROM users WHERE id = ?').get(userId);
 
     res.json({
       success: true,
       results,
       totalCost,
-      balance: Math.floor(updatedUser.balance * 100) / 100
+      balance: Math.floor(Number(updatedUser.balance) * 100) / 100
     });
   } catch (err) {
     console.error('Spin bundle error:', err);
@@ -263,36 +256,33 @@ router.post('/bundle', requireAuth, (req, res) => {
 });
 
 // POST /api/spin/buy - Buy a spin with balance
-router.post('/buy', requireAuth, (req, res) => {
+router.post('/buy', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
-    const user = db.prepare('SELECT balance FROM users WHERE id = ?').get(userId);
-    const SPIN_COST = getSpinCost();
+    const user = await db.prepare('SELECT balance FROM users WHERE id = ?').get(userId);
+    const SPIN_COST = await getSpinCost();
 
-    if (user.balance < SPIN_COST) {
-      return res.status(400).json({ error: `Insufficient balance. Need ₹${SPIN_COST}, have ₹${Math.floor(user.balance * 100) / 100}` });
+    if (Number(user.balance) < SPIN_COST) {
+      return res.status(400).json({ error: `Insufficient balance. Need ₹${SPIN_COST}, have ₹${Math.floor(Number(user.balance) * 100) / 100}` });
     }
 
-    const prize = pickPrizeDynamic();
+    const prize = await pickPrizeDynamic();
     if (!prize) return res.status(500).json({ error: 'Spin is temporarily unavailable' });
 
-    const spinTx = db.transaction(() => {
+    await db.transaction(async (client) => {
       // Deduct cost
-      db.prepare('UPDATE users SET balance = balance - ? WHERE id = ?').run(SPIN_COST, userId);
-      db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'purchase', ?, 'Purchased Spin Wheel chance')`)
-        .run(userId, -SPIN_COST);
+      await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [SPIN_COST, userId]);
+      await client.query(`INSERT INTO transactions (user_id, type, amount, description) VALUES ($1, 'purchase', $2, 'Purchased Spin Wheel chance')`, [userId, -SPIN_COST]);
 
       // Award prize
       if (prize.type === 'machine') {
-        db.prepare('INSERT INTO user_machines (user_id, machine_id) VALUES (?, ?)').run(userId, prize.machineId);
-        db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'bonus', 0, ?)`)
-          .run(userId, `Won machine from Spin Wheel!`);
+        await client.query('INSERT INTO user_machines (user_id, machine_id) VALUES ($1, $2)', [userId, prize.machineId]);
+        await client.query(`INSERT INTO transactions (user_id, type, amount, description) VALUES ($1, 'bonus', 0, $2)`, [userId, `Won machine from Spin Wheel!`]);
       } else if (prize.type === 'balance') {
-        const { rewardMul } = getSpinTunables();
-        const amt = Math.floor(((prize.amount || prize.value || 0) * rewardMul) * 100) / 100;
-        db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(amt, userId);
-        db.prepare(`INSERT INTO transactions (user_id, type, amount, description) VALUES (?, 'bonus', ?, ?)`)
-          .run(userId, amt, `Won ₹${amt} from Spin Wheel!`);
+        const { rewardMul } = await getSpinTunables();
+        const amt = Math.floor(((Number(prize.amount) || Number(prize.value) || 0) * rewardMul) * 100) / 100;
+        await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [amt, userId]);
+        await client.query(`INSERT INTO transactions (user_id, type, amount, description) VALUES ($1, 'bonus', $2, $3)`, [userId, amt, `Won ₹${amt} from Spin Wheel!`]);
       } else if (prize.type === 'lose') {
         // No reward
       }
@@ -300,24 +290,22 @@ router.post('/buy', requireAuth, (req, res) => {
       const prizeValue = prize.type === 'machine'
         ? (prize.machineId || '').toString()
         : prize.type === 'balance'
-          ? (prize.amount || prize.value || 0).toString()
+          ? (Number(prize.amount) || Number(prize.value) || 0).toString()
           : 'lose';
-      db.prepare('INSERT INTO spin_history (user_id, prize_type, prize_value) VALUES (?, ?, ?)').run(userId, prize.type, prizeValue);
+      await client.query('INSERT INTO spin_history (user_id, prize_type, prize_value) VALUES ($1, $2, $3)', [userId, prize.type, prizeValue]);
     });
 
-    spinTx();
-
-    const updatedUser = db.prepare('SELECT balance, free_spins FROM users WHERE id = ?').get(userId);
+    const updatedUser = await db.prepare('SELECT balance, free_spins FROM users WHERE id = ?').get(userId);
 
     res.json({
       success: true,
       prize: {
         type: prize.type,
-        value: prize.type === 'machine' ? prize.machineId : prize.type === 'balance' ? (prize.amount || prize.value || 0) : 'lose',
+        value: prize.type === 'machine' ? prize.machineId : prize.type === 'balance' ? (Number(prize.amount) || Number(prize.value) || 0) : 'lose',
         label: prize.label
       },
       freeSpins: updatedUser.free_spins || 0,
-      balance: Math.floor(updatedUser.balance * 100) / 100
+      balance: Math.floor(Number(updatedUser.balance) * 100) / 100
     });
   } catch (err) {
     console.error('Spin buy error:', err);

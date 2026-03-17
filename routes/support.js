@@ -13,13 +13,13 @@ const uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
 try { if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir); } catch {}
 
 // Get or create a support thread for current user
-router.post('/thread', requireAuth, (req, res) => {
+router.post('/thread', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
-    let thread = db.prepare(`SELECT * FROM support_threads WHERE user_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1`).get(userId);
+    let thread = await db.prepare(`SELECT * FROM support_threads WHERE user_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1`).get(userId);
     if (!thread) {
-      const r = db.prepare(`INSERT INTO support_threads (user_id) VALUES (?)`).run(userId);
-      thread = db.prepare(`SELECT * FROM support_threads WHERE id = ?`).get(r.lastInsertRowid);
+      const r = await db.prepare(`INSERT INTO support_threads (user_id) VALUES (?)`).run(userId);
+      thread = await db.prepare(`SELECT * FROM support_threads WHERE id = ?`).get(r.lastInsertRowid);
     }
     res.json({ success: true, thread });
   } catch (e) {
@@ -28,13 +28,13 @@ router.post('/thread', requireAuth, (req, res) => {
 });
 
 // User send message
-router.post('/send', requireAuth, (req, res) => {
+router.post('/send', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
     const { thread_id, message_text, image_url } = req.body;
-    const thread = db.prepare(`SELECT * FROM support_threads WHERE id = ?`).get(thread_id);
+    const thread = await db.prepare(`SELECT * FROM support_threads WHERE id = ?`).get(thread_id);
     if (!thread || thread.user_id !== userId) return res.status(403).json({ error: 'Invalid thread' });
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO support_messages (thread_id, sender_type, sender_id, message_text, image_url)
       VALUES (?, 'user', ?, ?, ?)
     `).run(thread_id, userId, message_text || '', image_url || null);
@@ -61,11 +61,11 @@ router.post('/upload', (req, res) => {
 });
 
 // List messages (user or partner)
-router.get('/messages', (req, res) => {
+router.get('/messages', async (req, res) => {
   try {
     const { thread_id, after_id } = req.query;
     if (!thread_id) return res.status(400).json({ error: 'thread_id required' });
-    const t = db.prepare(`SELECT * FROM support_threads WHERE id = ?`).get(thread_id);
+    const t = await db.prepare(`SELECT * FROM support_threads WHERE id = ?`).get(thread_id);
     if (!t) return res.status(404).json({ error: 'Thread not found' });
 
     const userId = req.session?.userId;
@@ -74,7 +74,7 @@ router.get('/messages', (req, res) => {
     if (userId && t.user_id !== userId) return res.status(403).json({ error: 'Not allowed' });
     if (partnerId && t.partner_id && t.partner_id !== partnerId) return res.status(403).json({ error: 'Not allowed' });
 
-    const rows = db.prepare(`
+    const rows = await db.prepare(`
       SELECT * FROM support_messages
       WHERE thread_id = ? AND (? IS NULL OR id > ?)
       ORDER BY id ASC LIMIT 200
@@ -86,9 +86,9 @@ router.get('/messages', (req, res) => {
 });
 
 // Partner endpoints
-router.get('/threads', requirePartner, (req, res) => {
+router.get('/threads', requirePartner, async (req, res) => {
   try {
-    const rows = db.prepare(`
+    const rows = await db.prepare(`
       SELECT st.*, u.username, u.email
       FROM support_threads st JOIN users u ON st.user_id = u.id
       WHERE st.status = 'open'
@@ -101,27 +101,27 @@ router.get('/threads', requirePartner, (req, res) => {
   }
 });
 
-router.post('/claim', requirePartner, (req, res) => {
+router.post('/claim', requirePartner, async (req, res) => {
   try {
     const { thread_id } = req.body;
-    const t = db.prepare(`SELECT * FROM support_threads WHERE id = ?`).get(thread_id);
+    const t = await db.prepare(`SELECT * FROM support_threads WHERE id = ?`).get(thread_id);
     if (!t) return res.status(404).json({ error: 'Thread not found' });
     if (t.partner_id && t.partner_id !== req.session.partnerId) return res.status(403).json({ error: 'Already claimed' });
-    db.prepare(`UPDATE support_threads SET partner_id = ? WHERE id = ?`).run(req.session.partnerId, thread_id);
+    await db.prepare(`UPDATE support_threads SET partner_id = ? WHERE id = ?`).run(req.session.partnerId, thread_id);
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-router.post('/partner/send', requirePartner, (req, res) => {
+router.post('/partner/send', requirePartner, async (req, res) => {
   try {
     const { thread_id, message_text, image_url } = req.body || {};
-    const t = db.prepare(`SELECT * FROM support_threads WHERE id = ?`).get(thread_id);
+    const t = await db.prepare(`SELECT * FROM support_threads WHERE id = ?`).get(thread_id);
     if (!t) return res.status(404).json({ error: 'Thread not found' });
     if (t.partner_id && t.partner_id !== req.session.partnerId) return res.status(403).json({ error: 'Not allowed' });
-    if (!t.partner_id) db.prepare(`UPDATE support_threads SET partner_id = ? WHERE id = ?`).run(req.session.partnerId, thread_id);
-    db.prepare(`
+    if (!t.partner_id) await db.prepare(`UPDATE support_threads SET partner_id = ? WHERE id = ?`).run(req.session.partnerId, thread_id);
+    await db.prepare(`
       INSERT INTO support_messages (thread_id, sender_type, sender_id, message_text, image_url)
       VALUES (?, 'partner', ?, ?, ?)
     `).run(thread_id, req.session.partnerId, message_text || '', image_url || null);

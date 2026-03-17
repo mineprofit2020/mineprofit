@@ -14,7 +14,7 @@ function generateReferralCode() {
 }
 
 // POST /api/auth/register
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
   try {
     const { username, email, password, referralCode } = req.body;
 
@@ -28,7 +28,7 @@ router.post('/register', (req, res) => {
 
     let referrerId = null;
     if (referralCode && String(referralCode).trim()) {
-      const referrer = db.prepare('SELECT id FROM users WHERE referral_code = ?').get(String(referralCode).trim().toUpperCase());
+      const referrer = await db.prepare('SELECT id FROM users WHERE referral_code = ?').get(String(referralCode).trim().toUpperCase());
       if (!referrer) {
         return res.status(400).json({ error: 'Invalid invite code. Please enter a valid referral code from an existing user.' });
       }
@@ -38,7 +38,7 @@ router.post('/register', (req, res) => {
     const uname = String(username).trim();
     const unameLC = uname.toLowerCase();
     // Check if user exists (case-insensitive username)
-    const existing = db.prepare('SELECT id FROM users WHERE email = ? OR LOWER(username) = ?').get(email, unameLC);
+    const existing = await db.prepare('SELECT id FROM users WHERE email = ? OR LOWER(username) = ?').get(email, unameLC);
     if (existing) {
       return res.status(400).json({ error: 'Username or email already exists' });
     }
@@ -47,7 +47,7 @@ router.post('/register', (req, res) => {
     const myReferralCode = generateReferralCode();
 
     // Insert user
-    const result = db.prepare(`
+    const result = await db.prepare(`
       INSERT INTO users (username, email, password_hash, plain_password, referral_code, referred_by_user_id, free_spins)
       VALUES (?, ?, ?, ?, ?, ?, 1)
     `).run(uname, email, passwordHash, password, myReferralCode, referrerId);
@@ -55,10 +55,10 @@ router.post('/register', (req, res) => {
     const userId = result.lastInsertRowid;
 
     // Give free Mini Miner (machine id = 1)
-    db.prepare('INSERT INTO user_machines (user_id, machine_id) VALUES (?, 1)').run(userId);
+    await db.prepare('INSERT INTO user_machines (user_id, machine_id) VALUES (?, 1)').run(userId);
 
     // Log transaction
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO transactions (user_id, type, amount, description)
       VALUES (?, 'bonus', 0, 'Received free Mini Miner on signup')
     `).run(userId);
@@ -81,7 +81,7 @@ router.post('/register', (req, res) => {
 });
 
 // POST /api/auth/login
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   try {
     const { identifier, email, password } = req.body;
     const loginId = (identifier || email || '').trim();
@@ -91,7 +91,7 @@ router.post('/login', (req, res) => {
     }
 
     // Allow login by username (case-insensitive) OR email (case-insensitive)
-    const user = db.prepare('SELECT * FROM users WHERE LOWER(email) = ? OR LOWER(username) = ?').get(loginId.toLowerCase(), loginId.toLowerCase());
+    const user = await db.prepare('SELECT * FROM users WHERE LOWER(email) = ? OR LOWER(username) = ?').get(loginId.toLowerCase(), loginId.toLowerCase());
     if (!user) {
       return res.status(400).json({ error: 'Invalid username/email or password' });
     }
@@ -123,29 +123,29 @@ router.post('/logout', (req, res) => {
 });
 
 // GET /api/auth/me
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   if (!req.session || req.session.userId === undefined || req.session.userId === null) {
     return res.status(401).json({ error: 'Not logged in' });
   }
-  const user = db.prepare('SELECT id, username, email, balance, referral_code, created_at FROM users WHERE id = ?').get(req.session.userId);
+  const user = await db.prepare('SELECT id, username, email, balance, referral_code, created_at FROM users WHERE id = ?').get(req.session.userId);
   res.json({ user });
 });
 
 // POST /api/auth/password/change
-router.post('/password/change', (req, res) => {
+router.post('/password/change', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Not logged in' });
   try {
     const { current_password, new_password } = req.body;
     if (!current_password || !new_password) return res.status(400).json({ error: 'All fields required' });
     if (new_password.length < 6) return res.status(400).json({ error: 'New password must be at least 6 chars' });
 
-    const user = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.session.userId);
+    const user = await db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.session.userId);
     if (!bcrypt.compareSync(current_password, user.password_hash)) {
       return res.status(400).json({ error: 'Incorrect current password' });
     }
 
     const hash = bcrypt.hashSync(new_password, 10);
-    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, req.session.userId);
+    await db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, req.session.userId);
     
     res.json({ success: true, message: 'Password updated successfully' });
   } catch (err) {

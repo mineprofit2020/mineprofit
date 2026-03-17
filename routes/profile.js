@@ -7,11 +7,11 @@ const db = new Proxy({}, { get(_, prop) { const i = getDb(); return typeof i[pro
 const router = express.Router();
 
 // GET /api/profile - Get user profile + bank details
-router.get('/', requireAuth, (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
-    const user = db.prepare('SELECT id, username, email, balance, created_at FROM users WHERE id = ?').get(userId);
-    const profile = db.prepare('SELECT * FROM user_profiles WHERE user_id = ?').get(userId);
+    const user = await db.prepare('SELECT id, username, email, balance, created_at FROM users WHERE id = ?').get(userId);
+    const profile = await db.prepare('SELECT * FROM user_profiles WHERE user_id = ?').get(userId);
 
     res.json({ user, profile: profile || null });
   } catch (err) {
@@ -21,23 +21,23 @@ router.get('/', requireAuth, (req, res) => {
 });
 
 // POST /api/profile/update - Update personal info + bank details
-router.post('/update', requireAuth, (req, res) => {
+router.post('/update', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
     const { full_name, phone, address, city, state, pincode, bank_account_name, bank_account_number, bank_ifsc, bank_name, upi_id } = req.body;
 
-    const existing = db.prepare('SELECT id FROM user_profiles WHERE user_id = ?').get(userId);
+    const existing = await db.prepare('SELECT id FROM user_profiles WHERE user_id = ?').get(userId);
 
     if (existing) {
-      db.prepare(`
+      await db.prepare(`
         UPDATE user_profiles SET
           full_name = ?, phone = ?, address = ?, city = ?, state = ?, pincode = ?,
           bank_account_name = ?, bank_account_number = ?, bank_ifsc = ?, bank_name = ?, upi_id = ?,
-          updated_at = datetime('now')
+          updated_at = CURRENT_TIMESTAMP
         WHERE user_id = ?
       `).run(full_name, phone, address, city, state, pincode, bank_account_name, bank_account_number, bank_ifsc, bank_name, upi_id, userId);
     } else {
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO user_profiles (user_id, full_name, phone, address, city, state, pincode, bank_account_name, bank_account_number, bank_ifsc, bank_name, upi_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(userId, full_name, phone, address, city, state, pincode, bank_account_name, bank_account_number, bank_ifsc, bank_name, upi_id);
@@ -51,7 +51,7 @@ router.post('/update', requireAuth, (req, res) => {
 });
 
 // POST /api/profile/withdraw - Request withdrawal
-router.post('/withdraw', requireAuth, (req, res) => {
+router.post('/withdraw', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
     const { amount, method } = req.body;
@@ -65,23 +65,23 @@ router.post('/withdraw', requireAuth, (req, res) => {
       return res.status(400).json({ error: 'Invalid withdrawal method' });
     }
 
-    const user = db.prepare('SELECT balance, withdraw_blocked, withdraw_limit, withdraw_limit_until FROM users WHERE id = ?').get(userId);
+    const user = await db.prepare('SELECT balance, withdraw_blocked, withdraw_limit, withdraw_limit_until FROM users WHERE id = ?').get(userId);
     if (user.withdraw_blocked) {
       return res.status(403).json({ error: 'Withdrawals are temporarily disabled for your account. Please contact support.' });
     }
     if (user.withdraw_limit && user.withdraw_limit_until) {
-      const until = new Date(user.withdraw_limit_until + 'Z');
+      const until = new Date(user.withdraw_limit_until);
       const now = new Date();
-      if (now < until && reqAmount > user.withdraw_limit) {
+      if (now < until && reqAmount > Number(user.withdraw_limit)) {
         return res.status(400).json({ error: `You can withdraw up to ₹${user.withdraw_limit} until ${until.toLocaleDateString('en-IN')}` });
       }
     }
-    if (user.balance < reqAmount) {
+    if (Number(user.balance) < reqAmount) {
       return res.status(400).json({ error: 'Insufficient balance' });
     }
 
     // Global per-transaction caps by method
-    const caps = db.prepare(`SELECT key, value FROM settings WHERE key IN ('withdraw_cap_upi','withdraw_cap_bank','withdraw_daily_cap','withdraw_frequency_limit','withdraw_frequency_hours')`).all();
+    const caps = await db.prepare(`SELECT key, value FROM settings WHERE key IN ('withdraw_cap_upi','withdraw_cap_bank','withdraw_daily_cap','withdraw_frequency_limit','withdraw_frequency_hours')`).all();
     const capMap = {};
     caps.forEach(r => { capMap[r.key] = r.value; });
     const asNum = (v) => {
@@ -109,23 +109,25 @@ router.post('/withdraw', requireAuth, (req, res) => {
     const freqHours = Math.max(1, asInt(capMap['withdraw_frequency_hours']) || 24);
     
     if (freqLimit > 0) {
-      const recent = db.prepare(`
+      // Postgres syntax for interval
+      const recent = await db.prepare(`
         SELECT COUNT(*) as count 
         FROM withdrawals 
-        WHERE user_id = ? AND created_at > datetime('now', '-' || ? || ' hours')
+        WHERE user_id = ? AND created_at > (CURRENT_TIMESTAMP - ($2 * INTERVAL '1 hour'))
       `).get(userId, freqHours);
       
-      if (recent.count >= freqLimit) {
+      if (Number(recent.count) >= freqLimit) {
         return res.status(400).json({ error: `Withdrawal limit reached. Max ${freqLimit} withdrawals every ${freqHours} hours.` });
       }
     }
 
     // Optional daily cap: pending + approved today
     if (dailyCap > 0) {
-      const todaySum = db.prepare(`
+      const todayRes = await db.prepare(`
         SELECT COALESCE(SUM(amount),0) as total
-        FROM withdrawals WHERE user_id = ? AND date(created_at) = date('now') AND status IN ('pending','approved')
-      `).get(userId).total;
+        FROM withdrawals WHERE user_id = ? AND DATE(created_at) = CURRENT_DATE AND status IN ('pending','approved')
+      `).get(userId);
+      const todaySum = Number(todayRes.total);
       if ((todaySum + reqAmount) > dailyCap) {
         return res.status(400).json({ error: `Daily withdrawal cap ₹${dailyCap} exceeded (${todaySum} used today)` });
       }
@@ -133,7 +135,7 @@ router.post('/withdraw', requireAuth, (req, res) => {
 
 
     // Require complete profile info
-    const profile = db.prepare('SELECT * FROM user_profiles WHERE user_id = ?').get(userId);
+    const profile = await db.prepare('SELECT * FROM user_profiles WHERE user_id = ?').get(userId);
     if (!profile) {
       return res.status(400).json({ error: 'Please complete your profile before withdrawing' });
     }
@@ -156,18 +158,16 @@ router.post('/withdraw', requireAuth, (req, res) => {
       }
     }
 
-    const withdrawTx = db.transaction(() => {
-      db.prepare('UPDATE users SET balance = balance - ? WHERE id = ?').run(reqAmount, userId);
+    await db.transaction(async (client) => {
+      await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [reqAmount, userId]);
 
-      db.prepare('INSERT INTO withdrawals (user_id, amount, method) VALUES (?, ?, ?)').run(userId, reqAmount, method);
+      await client.query('INSERT INTO withdrawals (user_id, amount, method) VALUES ($1, $2, $3)', [userId, reqAmount, method]);
 
-      db.prepare(`
+      await client.query(`
         INSERT INTO transactions (user_id, type, amount, description)
-        VALUES (?, 'withdrawal', ?, ?)
-      `).run(userId, -reqAmount, `Withdrawal via ${method.toUpperCase()} - ₹${reqAmount}`);
+        VALUES ($1, 'withdrawal', $2, $3)
+      `, [userId, -reqAmount, `Withdrawal via ${method.toUpperCase()} - ₹${reqAmount}`]);
     });
-
-    withdrawTx();
 
     res.json({ success: true, message: `Withdrawal of ₹${reqAmount} requested. Will be processed within 30 minutes.` });
   } catch (err) {
@@ -177,10 +177,10 @@ router.post('/withdraw', requireAuth, (req, res) => {
 });
 
 // GET /api/profile/withdrawals - Get withdrawal history
-router.get('/withdrawals', requireAuth, (req, res) => {
+router.get('/withdrawals', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
-    const withdrawals = db.prepare('SELECT * FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC LIMIT 50').all(userId);
+    const withdrawals = await db.prepare('SELECT * FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC LIMIT 50').all(userId);
     res.json({ withdrawals });
   } catch (err) {
     console.error('Withdrawals fetch error:', err);
